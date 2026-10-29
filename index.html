@@ -1,0 +1,2769 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PolySlither Math 3D - Playroom Multiplayer & Fair Sync Edition</title>
+  
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <!-- KaTeX CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+  
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+
+  <!-- Playroom Kit UMD Bundle (Serverless WebRTC/WebSocket Multiplayer) -->
+  <script src="https://unpkg.com/playroomkit/multiplayer.full.umd.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --glass-bg: rgba(16, 23, 45, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.22);
+      --glass-highlight: rgba(255, 255, 255, 0.36);
+      --glass-shadow: 0 18px 42px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.32);
+      --accent-cyan: #00f2fe;
+      --accent-blue: #4facfe;
+      --accent-purple: #c471ed;
+      --accent-pink: #f64f59;
+      --accent-green: #38ef7d;
+      --opt-0: #ff4b72; /* 북서 (A) */
+      --opt-1: #00e5ff; /* 북동 (B) */
+      --opt-2: #ffbe0b; /* 남서 (C) */
+      --opt-3: #a855f7; /* 남동 (D) */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #070b19;
+      color: #ffffff;
+    }
+
+    .katex {
+      font-size: 1.06em !important;
+      color: inherit;
+    }
+
+    /* Ambient Liquid Blobs */
+    .ambient-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+      opacity: 0.32;
+      animation: floatBlob 16s infinite alternate ease-in-out;
+    }
+    .blob-1 { width: 420px; height: 420px; background: #00f2fe; top: -100px; left: -100px; }
+    .blob-2 { width: 500px; height: 500px; background: #7928ca; bottom: -140px; right: -100px; animation-delay: -5s; }
+    .blob-3 { width: 360px; height: 360px; background: #ff0080; top: 40%; left: 50%; animation-delay: -10s; }
+
+    @keyframes floatBlob {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(45px, -45px) scale(1.12); }
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+    }
+
+    /* Liquid Glass Card Base */
+    .liquid-glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(22px) saturate(190%);
+      -webkit-backdrop-filter: blur(22px) saturate(190%);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-highlight);
+      border-left: 1px solid var(--glass-highlight);
+      box-shadow: var(--glass-shadow);
+      border-radius: 24px;
+    }
+
+    /* Screens */
+    .screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Lobby Card */
+    .lobby-card {
+      width: 100%;
+      max-width: 680px;
+      padding: 28px 32px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin: auto;
+    }
+
+    .badge-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: rgba(0, 242, 254, 0.14);
+      border: 1px solid rgba(0, 242, 254, 0.4);
+      color: var(--accent-cyan);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      margin-bottom: 10px;
+    }
+
+    .game-title {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.8px;
+      background: linear-gradient(135deg, #ffffff 10%, #8be9fd 55%, #c471ed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    .game-subtitle {
+      font-size: 0.88rem;
+      color: rgba(255, 255, 255, 0.74);
+      margin-bottom: 18px;
+      line-height: 1.45;
+    }
+
+    .name-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .glass-input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      outline: none;
+    }
+    .glass-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+    }
+
+    .setting-section {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .setting-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .setting-label span.sub {
+      font-size: 0.74rem;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .option-grid.ai-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .select-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 13px;
+      padding: 10px 6px;
+      color: rgba(255, 255, 255, 0.82);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .select-btn:hover {
+      background: rgba(255, 255, 255, 0.13);
+      transform: translateY(-2px);
+    }
+
+    .select-btn.active {
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.26), rgba(79, 172, 254, 0.22));
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.32);
+      color: #fff;
+    }
+
+    .select-btn .main-txt {
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+    .select-btn .sub-txt {
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.62);
+    }
+    .select-btn.active .sub-txt {
+      color: #bbf7ff;
+    }
+
+    .fairness-box {
+      background: rgba(0, 242, 254, 0.06);
+      border: 1px solid rgba(0, 242, 254, 0.25);
+      border-radius: 15px;
+      padding: 11px 14px;
+      text-align: left;
+      font-size: 0.77rem;
+      color: rgba(255, 255, 255, 0.84);
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+    .fairness-box strong {
+      color: #7ef9ff;
+    }
+
+    .start-btn-group {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 10px;
+    }
+
+    .start-btn {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #061021;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #a6ffcb 100%);
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 242, 254, 0.35);
+      transition: all 0.22s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0, 242, 254, 0.5);
+    }
+
+    .start-btn.multi-btn {
+      color: #ffffff;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .start-btn.multi-btn:hover {
+      box-shadow: 0 12px 32px rgba(236, 72, 153, 0.6);
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+    #hud.hidden {
+      display: none;
+    }
+
+    /* Top Problem Bar */
+    .hud-top-center {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 730px);
+      padding: 13px 18px;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .problem-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-left-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .topic-pill {
+      padding: 4px 11px;
+      border-radius: 999px;
+      background: rgba(0, 242, 254, 0.16);
+      border: 1px solid rgba(0, 242, 254, 0.45);
+      color: #7ef9ff;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .sync-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(56, 239, 125, 0.16);
+      border: 1px solid rgba(56, 239, 125, 0.45);
+      color: #80ffdb;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .glass-action-btn {
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .glass-action-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .problem-body-wrap {
+      position: relative;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      padding: 4px 8px;
+    }
+
+    .problem-body {
+      font-size: 1.15rem;
+      font-weight: 700;
+      text-align: center;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      line-height: 1.45;
+      transition: filter 0.2s ease, opacity 0.2s ease;
+    }
+
+    .problem-body.sync-locked {
+      filter: blur(8px);
+      opacity: 0.25;
+    }
+
+    /* Formula 1: Simultaneous Reveal Countdown Overlay */
+    .fair-sync-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(0, 242, 254, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #7ef9ff;
+      z-index: 3;
+      transition: opacity 0.18s ease;
+    }
+    .fair-sync-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 4 Option Chips with Directional & Color Legend */
+    .options-legend-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .option-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.84rem;
+      font-weight: 700;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-chip::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+    }
+    .option-chip.opt-0::before { background: var(--opt-0); }
+    .option-chip.opt-1::before { background: var(--opt-1); }
+    .option-chip.opt-2::before { background: var(--opt-2); }
+    .option-chip.opt-3::before { background: var(--opt-3); }
+
+    .chip-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 4px;
+    }
+
+    .chip-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 900;
+      color: #081020;
+    }
+    .opt-0 .chip-badge { background: var(--opt-0); color: #fff; }
+    .opt-1 .chip-badge { background: var(--opt-1); }
+    .opt-2 .chip-badge { background: var(--opt-2); }
+    .opt-3 .chip-badge { background: var(--opt-3); color: #fff; }
+
+    .chip-dir {
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 600;
+    }
+
+    .hint-drawer {
+      background: rgba(255, 214, 10, 0.12);
+      border: 1px solid rgba(255, 214, 10, 0.4);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 0.83rem;
+      color: #ffe97f;
+      text-align: center;
+    }
+    .hint-drawer.hidden {
+      display: none;
+    }
+
+    /* Left HUD: Player Stats & Network Mode */
+    .hud-top-left {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 225px;
+      padding: 13px 15px;
+      pointer-events: auto;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+      font-size: 0.82rem;
+    }
+    .stat-row:last-child { margin-bottom: 0; }
+    .stat-label { color: rgba(255, 255, 255, 0.68); }
+    .stat-val { font-weight: 800; color: #fff; font-size: 0.94rem; }
+    .stat-val.cyan { color: var(--accent-cyan); }
+
+    .min-len-bar-wrap {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.73rem;
+      color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Right HUD: Radar Minimap & Leaderboard */
+    .hud-top-right {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .radar-card {
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .radar-title {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    #radar-canvas {
+      width: 172px;
+      height: 172px;
+      border-radius: 14px;
+      background: rgba(6, 12, 28, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .leaderboard-card {
+      padding: 11px 13px;
+    }
+
+    .lb-title {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .lb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 165px;
+      overflow-y: auto;
+    }
+
+    .lb-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      padding: 4px 7px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .lb-item.me {
+      background: rgba(0, 242, 254, 0.18);
+      border: 1px solid rgba(0, 242, 254, 0.45);
+      font-weight: 700;
+    }
+    .lb-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lb-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* 3D Overlay Labels & Edge Indicators */
+    #overlay-3d-labels {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      overflow: hidden;
+    }
+
+    .orb-floating-label {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      padding: 5px 11px;
+      border-radius: 12px;
+      background: rgba(12, 18, 38, 0.86);
+      backdrop-filter: blur(10px);
+      border: 2px solid #fff;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .orb-edge-indicator {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(12, 18, 38, 0.92);
+      backdrop-filter: blur(10px);
+      border: 2px solid #fff;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .snake-floating-tag {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(10, 16, 34, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      font-size: 0.73rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Toast Feedback */
+    #toast-container {
+      position: fixed;
+      bottom: 86px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 800;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
+      animation: popToast 0.25s ease-out;
+    }
+
+    @keyframes popToast {
+      0% { transform: translateY(15px) scale(0.9); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* Bottom Controls Bar */
+    .hud-bottom-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.85);
+      pointer-events: auto;
+    }
+
+    .boost-btn {
+      padding: 6px 15px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #ff4b72, #ffbe0b);
+      border: none;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    /* Result Modal */
+    .result-card {
+      width: 100%;
+      max-width: 520px;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .review-box {
+      margin: 16px 0 20px;
+      padding: 15px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      text-align: left;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .secondary-btn {
+      padding: 13px 18px;
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    @media (max-width: 900px) {
+      .hud-top-left, .hud-top-right {
+        top: auto;
+        bottom: 62px;
+        width: 168px;
+      }
+      .options-legend-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .start-btn-group {
+        grid-template-columns: 1fr;
+      }
+      #radar-canvas {
+        width: 126px;
+        height: 126px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Liquid Ambient Background -->
+  <div class="ambient-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- 3D Arena Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- 3D Floating & Off-Screen Edge Labels -->
+  <div id="overlay-3d-labels"></div>
+
+  <!-- Toast Feedback Container -->
+  <div id="toast-container"></div>
+
+  <!-- ================= LOBBY SCREEN ================= -->
+  <div id="lobby-screen" class="screen">
+    <div class="lobby-card liquid-glass">
+      <div class="badge-title">✨ PLAYROOM KIT MULTIPLAYER & FAIR SYNC 3.0</div>
+      <h1 class="game-title">PolySlither Math</h1>
+      <p class="game-subtitle">
+        친구들과 방 코드·링크로 접속해 중학 수학 암산 대결을 펼치세요!<br/>
+        지연시간(Ping) 유불리를 완벽히 제거한 공정 동기화 엔진 탑재
+      </p>
+
+      <!-- 플레이어 닉네임 입력 -->
+      <div class="name-row">
+        <input id="player-nickname" class="glass-input" type="text" maxlength="10" value="수학마스터" placeholder="닉네임 입력 (최대 10자)" />
+      </div>
+
+      <!-- 학년 난이도 선택 -->
+      <div class="setting-section">
+        <div class="setting-label">
+          <span>📚 중학교 수학 교육과정 선택 (방장 기준)</span>
+          <span class="sub" id="grade-desc-text">중1~중3 전 과정 통합 출제</span>
+        </div>
+        <div class="option-grid" id="grade-selector">
+          <button class="select-btn" data-grade="1">
+            <span class="main-txt">중1 수학</span>
+            <span class="sub-txt">소인수·일차방정식</span>
+          </button>
+          <button class="select-btn" data-grade="2">
+            <span class="main-txt">중2 수학</span>
+            <span class="sub-txt">지수·연립·일차함수</span>
+          </button>
+          <button class="select-btn" data-grade="3">
+            <span class="main-txt">중3 수학</span>
+            <span class="sub-txt">제곱근·이차·피타고라스</span>
+          </button>
+          <button class="select-btn active" data-grade="all">
+            <span class="main-txt">전 학년 통합</span>
+            <span class="sub-txt">중1 ~ 중3 마스터</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- AI 라이벌 뱀 수 선택 (0 = 솔로 연습 모드) -->
+      <div class="setting-section">
+        <div class="setting-label">
+          <span>🐍 AI 라이벌 지렁이 수 설정</span>
+          <span class="sub" id="ai-desc-text">AI 라이벌 3마리와 표준 경쟁</span>
+        </div>
+        <div class="option-grid ai-grid" id="ai-selector">
+          <button class="select-btn" data-ai="0">
+            <span class="main-txt">0마리</span>
+            <span class="sub-txt">솔로/순수 대결</span>
+          </button>
+          <button class="select-btn" data-ai="1">
+            <span class="main-txt">1마리</span>
+            <span class="sub-txt">입문 대결</span>
+          </button>
+          <button class="select-btn" data-ai="2">
+            <span class="main-txt">2마리</span>
+            <span class="sub-txt">일반 대결</span>
+          </button>
+          <button class="select-btn active" data-ai="3">
+            <span class="main-txt">3마리</span>
+            <span class="sub-txt">표준 아레나</span>
+          </button>
+          <button class="select-btn" data-ai="5">
+            <span class="main-txt">5마리</span>
+            <span class="sub-txt">치열한 난전</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 지연시간 유불리 해결 공식 3가지 안내 -->
+      <div class="fairness-box" id="lobby-rules-box">
+        • <strong>공식 1 (0.55초 동시 오픈 락)</strong>: 새 문제 출제 시 0.55초 카운트다운 후 동시에 공개하여 방장 선점 유불리를 차단합니다.<br/>
+        • <strong>공식 2 (0ms 클라이언트 예측 + 15Hz 보간)</strong>: 내 지렁이는 지연 없이 즉시 조작되며 상대 지렁이는 60FPS 선형 보간(Lerp)됩니다.<br/>
+        • <strong>공식 3 ($\Delta t$ 풀이 소요시간 RPC 판정)</strong>: 간발의 차로 구슬에 닿으면 문제 공개 후 소요 시간($\Delta t$)이 더 짧은 학생이 승리합니다!<br/>
+        • <strong>길이 비례 충돌</strong>: 상대와의 길이 차이($\Delta L = |L_1 - L_2|$)만큼 짧은 쪽이 감소하며, 최소 길이($4$) 미만 시 탈락합니다.
+      </div>
+
+      <div class="start-btn-group">
+        <button id="start-multi-btn" class="start-btn multi-btn">
+          🌐 실시간 멀티플레이 (Playroom 방 생성/입장)
+        </button>
+        <button id="start-local-btn" class="start-btn">
+          💻 로컬 싱글 / 연습 모드 즉시 시작
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= IN-GAME HUD ================= -->
+  <div id="hud" class="hidden">
+    <!-- Left Stats -->
+    <div class="hud-top-left liquid-glass">
+      <div class="stat-row">
+        <span class="stat-label">내 점수</span>
+        <span class="stat-val cyan" id="hud-score">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">현재 길이 / 최소</span>
+        <span class="stat-val"><span id="hud-length">8</span> <small style="color:rgba(255,255,255,0.55)">/ 4</small></span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">연속 정답 / Δt</span>
+        <span class="stat-val" id="hud-streak">0 🔥</span>
+      </div>
+      <div class="min-len-bar-wrap">
+        <div id="hud-mode-badge">모드: 로컬 아레나</div>
+        <div id="hud-net-badge" style="color:#80ffdb; font-weight:700;">⚡ 0ms 입력 예측 활성</div>
+      </div>
+    </div>
+
+    <!-- Top Center Math Problem & 4 Quadrant Legend -->
+    <div class="hud-top-center liquid-glass">
+      <div class="problem-header">
+        <div class="header-left-tags">
+          <span class="topic-pill" id="hud-topic">중1 · 일차방정식</span>
+          <span class="sync-pill" id="hud-timer-pill">⏱️ 풀이 시간: 0.0s</span>
+        </div>
+        <div class="hud-actions">
+          <button class="glass-action-btn hidden" id="btn-copy-invite" title="친구 초대 링크 복사">🔗 초대 링크 복사</button>
+          <button class="glass-action-btn" id="btn-hint">💡 힌트</button>
+          <button class="glass-action-btn" id="btn-lobby">🏠 로비</button>
+        </div>
+      </div>
+
+      <!-- Problem Display + Formula 1 Fair Sync Overlay -->
+      <div class="problem-body-wrap">
+        <div class="problem-body" id="hud-question">
+          문제를 불러오는 중...
+        </div>
+        <div class="fair-sync-overlay hidden" id="fair-sync-overlay">
+          <span>⏳ 공정 동기화 중 (모든 플레이어 동시 문제 오픈)...</span>
+        </div>
+      </div>
+
+      <div class="hint-drawer hidden" id="hud-hint-box"></div>
+
+      <!-- 4 Fixed Quadrant Option Chips -->
+      <div class="options-legend-bar">
+        <div class="option-chip opt-0">
+          <div class="chip-left">
+            <span class="chip-badge">A</span>
+            <span id="opt-val-0">-</span>
+          </div>
+          <span class="chip-dir">↖ 북서</span>
+        </div>
+        <div class="option-chip opt-1">
+          <div class="chip-left">
+            <span class="chip-badge">B</span>
+            <span id="opt-val-1">-</span>
+          </div>
+          <span class="chip-dir">↗ 북동</span>
+        </div>
+        <div class="option-chip opt-2">
+          <div class="chip-left">
+            <span class="chip-badge">C</span>
+            <span id="opt-val-2">-</span>
+          </div>
+          <span class="chip-dir">↙ 남서</span>
+        </div>
+        <div class="option-chip opt-3">
+          <div class="chip-left">
+            <span class="chip-badge">D</span>
+            <span id="opt-val-3">-</span>
+          </div>
+          <span class="chip-dir">↘ 남동</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Radar & Leaderboard -->
+    <div class="hud-top-right">
+      <div class="radar-card liquid-glass">
+        <div class="radar-title">
+          <span>🧭 실시간 구슬 레이더</span>
+          <span style="color:#7ef9ff">A·B·C·D</span>
+        </div>
+        <canvas id="radar-canvas" width="172" height="172"></canvas>
+      </div>
+
+      <div class="leaderboard-card liquid-glass">
+        <div class="lb-title">
+          <span>🏆 실시간 아레나 랭킹</span>
+          <span>길이(L)</span>
+        </div>
+        <div class="lb-list" id="lb-list"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="hud-bottom-bar liquid-glass">
+      <span>🖱️ <strong>마우스 커서</strong> 또는 <strong>방향키(WASD)</strong> 조향</span>
+      <button class="boost-btn" id="btn-boost">⚡ 부스트 (Space / 클릭)</button>
+    </div>
+  </div>
+
+  <!-- ================= RESULT MODAL ================= -->
+  <div id="result-screen" class="screen hidden">
+    <div class="result-card liquid-glass">
+      <div class="badge-title" id="result-badge">ARENA REPORT</div>
+      <h2 class="game-title" style="font-size:1.9rem" id="result-title">아레나 종료</h2>
+      <p class="game-subtitle" id="result-reason">최소 길이(4) 미만으로 감소했습니다.</p>
+
+      <div class="stat-row" style="padding: 6px 12px;">
+        <span class="stat-label">최종 점수</span>
+        <span class="stat-val cyan" id="res-score">0점</span>
+      </div>
+      <div class="stat-row" style="padding: 6px 12px;">
+        <span class="stat-label">최대 도달 길이</span>
+        <span class="stat-val" id="res-max-len">8</span>
+      </div>
+
+      <div class="review-box">
+        <div style="font-weight:800; color:#7ef9ff; margin-bottom:6px;">📝 마지막 출제 문제 & 수학 해설</div>
+        <div id="res-problem-q" style="margin-bottom:6px;"></div>
+        <div id="res-problem-a" style="color:#a6ffcb; font-weight:700; margin-bottom:4px;"></div>
+        <div id="res-problem-exp" style="color:rgba(255,255,255,0.78); font-size:0.82rem;"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="secondary-btn" id="btn-back-lobby">로비 설정 변경</button>
+        <button class="start-btn" id="btn-retry">🔄 즉시 재도전 / 부활</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**************************************************************
+     * 1. KaTeX 수식 렌더링 헬퍼 (혼합 문장 $...$ 및 순수 LaTeX 완벽 지원)
+     **************************************************************/
+    function renderMathContent(element, content, isPureLatex = false) {
+      if (!element) return;
+      const str = String(content ?? '');
+
+      if (typeof window.katex === 'undefined') {
+        element.textContent = str.replace(/\$/g, '');
+        return;
+      }
+
+      if (isPureLatex) {
+        try {
+          window.katex.render(str, element, {
+            throwOnError: false,
+            displayMode: false
+          });
+        } catch (err) {
+          element.textContent = str;
+        }
+        return;
+      }
+
+      const tokens = str.split(/(\$[^\$]+\$)/g);
+      element.innerHTML = '';
+
+      tokens.forEach(token => {
+        if (token.startsWith('$') && token.endsWith('$') && token.length > 2) {
+          const tex = token.slice(1, -1);
+          const mathSpan = document.createElement('span');
+          try {
+            window.katex.render(tex, mathSpan, {
+              throwOnError: false,
+              displayMode: false
+            });
+          } catch (err) {
+            mathSpan.textContent = tex;
+          }
+          element.appendChild(mathSpan);
+        } else if (token.length > 0) {
+          const txtSpan = document.createElement('span');
+          txtSpan.textContent = token;
+          element.appendChild(txtSpan);
+        }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const rulesBox = document.getElementById('lobby-rules-box');
+      if (rulesBox && typeof window.renderMathInElement === 'function') {
+        window.renderMathInElement(rulesBox, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    });
+
+    /**************************************************************
+     * 2. 중학교 1~3학년 수학 문제 생성기 (이중 백슬래시 \\ 완벽 적용)
+     **************************************************************/
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function makeUniqueOptions(correctNumber, spread = 5, allowNegative = true) {
+      const set = new Set([correctNumber]);
+      let guard = 0;
+      while (set.size < 4 && guard < 60) {
+        guard++;
+        const delta = randInt(1, spread) * (Math.random() < 0.5 ? -1 : 1);
+        let cand = correctNumber + delta;
+        if (!allowNegative && cand <= 0) {
+          cand = correctNumber + Math.abs(delta) + guard;
+        }
+        if (cand !== correctNumber) set.add(cand);
+      }
+      const arr = Array.from(set);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return {
+        options: arr.map(n => String(n)),
+        correctIndex: arr.indexOf(correctNumber)
+      };
+    }
+
+    function generateMathProblem(gradeOption) {
+      const grade = gradeOption === 'all' ? String(randInt(1, 3)) : String(gradeOption);
+      const type = randInt(1, 4);
+      const problemId = 'prob_' + Date.now() + '_' + randInt(100, 999);
+
+      // 4개 구슬의 스폰 오프셋도 문제 데이터에 포함하여 멀티플레이어 전원이 동일한 위치에서 구슬을 보도록 보장
+      const orbJitter = [
+        { jx: randInt(-4, 4), jz: randInt(-4, 4) },
+        { jx: randInt(-4, 4), jz: randInt(-4, 4) },
+        { jx: randInt(-4, 4), jz: randInt(-4, 4) },
+        { jx: randInt(-4, 4), jz: randInt(-4, 4) }
+      ];
+
+      // [중1 과정]
+      if (grade === '1') {
+        if (type === 1) {
+          const p1 = [2, 3][randInt(0, 1)];
+          const p2 = [5, 7][randInt(0, 1)];
+          const a = randInt(1, 3);
+          const b = randInt(1, 3);
+          const ans = (a + 1) * (b + 1);
+          const { options, correctIndex } = makeUniqueOptions(ans, 4, false);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중1 · 소인수분해',
+            question: `자연수 $N = ${p1}^{${a}} \\times ${p2}^{${b}}$ 의 양의 약수의 개수는?`,
+            options,
+            correctIndex,
+            hint: `소인수분해된 수 $p^{a} \\times q^{b}$ 의 약수의 개수는 $(a+1)(b+1)$ 입니다.`,
+            explanation: `지수가 각각 $${a}, ${b}$ 이므로 약수의 개수는 $(${a}+1) \\times (${b}+1) = ${ans}$ 개입니다.`
+          };
+        } else if (type === 2) {
+          const x = randInt(-6, 8);
+          const a = randInt(2, 5);
+          const b = randInt(-9, 9);
+          const c = a * x + b;
+          const bStr = b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+          const { options, correctIndex } = makeUniqueOptions(x, 4, true);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중1 · 일차방정식',
+            question: `일차방정식 $${a}x ${bStr} = ${c}$ 의 해 $x$ 의 값은?`,
+            options,
+            correctIndex,
+            hint: `상수항을 우변으로 이항한 뒤 $x$ 의 계수 $${a}$ 로 양변을 나누어 보세요.`,
+            explanation: `$${a}x = ${c - b}$ 에서 양변을 $${a}$ 로 나누면 $x = ${x}$ 입니다.`
+          };
+        } else if (type === 3) {
+          const a = randInt(-5, -2);
+          const b = randInt(2, 5);
+          const ans = a * a - b;
+          const { options, correctIndex } = makeUniqueOptions(ans, 5, true);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중1 · 정수와 유리수',
+            question: `$(${a})^{2} - (+${b})$ 를 계산한 값은?`,
+            options,
+            correctIndex,
+            hint: `음수를 제곱하면 양수가 됩니다: $(${a})^{2} = ${a * a}$`,
+            explanation: `$(${a})^{2} - ${b} = ${a * a} - ${b} = ${ans}$ 입니다.`
+          };
+        } else {
+          const a = randInt(-4, 5) || 3;
+          const k = randInt(2, 6);
+          const ans = a * k;
+          const { options, correctIndex } = makeUniqueOptions(ans, 5, true);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중1 · 좌표평면과 그래프',
+            question: `정비례 관계 $y = ${a}x$ 의 그래프가 점 $(${k}, a)$ 를 지날 때, 상수 $a$ 의 값은?`,
+            options,
+            correctIndex,
+            hint: `$x = ${k}, y = a$ 를 식 $y = ${a}x$ 에 대입하세요.`,
+            explanation: `$a = ${a} \\times ${k} = ${ans}$ 입니다.`
+          };
+        }
+      }
+
+      // [중2 과정]
+      if (grade === '2') {
+        if (type === 1) {
+          const m = randInt(2, 5);
+          const n = randInt(2, 4);
+          const p = randInt(1, m + n - 2);
+          const ans = m + n - p;
+          const { options, correctIndex } = makeUniqueOptions(ans, 3, false);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중2 · 단항식의 계산',
+            question: `$a^{${m}} \\times a^{${n}} \\div a^{${p}} = a^{x}$ 일 때, 자연수 $x$ 의 값은?`,
+            options,
+            correctIndex,
+            hint: `밑이 같을 때 곱셈은 지수끼리 더하고, 나눗셈은 지수끼리 뺍니다.`,
+            explanation: `$x = ${m} + ${n} - ${p} = ${ans}$ 입니다.`
+          };
+        } else if (type === 2) {
+          const a = randInt(-3, 4) || 2;
+          const b = randInt(-5, 7);
+          const xVal = randInt(-3, 4) || 2;
+          const ans = a * xVal + b;
+          const bStr = b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+          const { options, correctIndex } = makeUniqueOptions(ans, 5, true);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중2 · 일차함수',
+            question: `일차함수 $f(x) = ${a}x ${bStr}$ 에 대하여 $f(${xVal})$ 의 값은?`,
+            options,
+            correctIndex,
+            hint: `$x$ 자리에 $${xVal}$ 을 대입하여 함숫값을 계산합니다.`,
+            explanation: `$f(${xVal}) = ${a} \\times (${xVal}) ${bStr} = ${ans}$ 입니다.`
+          };
+        } else if (type === 3) {
+          const x = randInt(1, 6);
+          const y = randInt(1, 6);
+          const sum = x + y;
+          const diff = x - y;
+          const ans = x;
+          const { options, correctIndex } = makeUniqueOptions(ans, 4, false);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중2 · 연립일차방정식',
+            question: `연립방정식 $\\begin{cases} x + y = ${sum} \\\\ x - y = ${diff} \\end{cases}$ 를 만족시키는 $x$ 의 값은?`,
+            options,
+            correctIndex,
+            hint: `두 식을 변끼리 더하면 $y$ 가 소거되어 $2x = ${sum + diff}$ 가 됩니다.`,
+            explanation: `두 식을 더하면 $2x = ${sum + diff}$ 이므로 $x = ${x}$ 입니다.`
+          };
+        } else {
+          const topAngle = randInt(2, 7) * 20;
+          const ans = (180 - topAngle) / 2;
+          const { options, correctIndex } = makeUniqueOptions(ans, 10, false);
+          return {
+            id: problemId,
+            orbJitter,
+            topic: '중2 · 도형의 성질',
+            question: `꼭지각의 크기가 $${topAngle}^{\\circ}$ 인 이등변삼각형의 한 밑각의 크기($^{\\circ}$)는?`,
+            options,
+            correctIndex,
+            hint: `이등변삼각형의 두 밑각의 크기는 같고, 삼각형 세 내각의 합은 $180^{\\circ}$ 입니다.`,
+            explanation: `$\\dfrac{180^{\\circ} - ${topAngle}^{\\circ}}{2} = ${ans}^{\\circ}$ 입니다.`
+          };
+        }
+      }
+
+      // [중3 과정]
+      if (type === 1) {
+        const a = randInt(2, 7);
+        const b = randInt(2, 6);
+        const ans = a + b;
+        const { options, correctIndex } = makeUniqueOptions(ans, 4, false);
+        return {
+          id: problemId,
+          orbJitter,
+          topic: '중3 · 제곱근과 실수',
+          question: `$\\sqrt{${a * a}} + \\sqrt{(-${b})^{2}}$ 을 간단히 한 값은?`,
+          options,
+          correctIndex,
+          hint: `실수 $k$ 에 대하여 $\\sqrt{k^{2}} = |k|$ 입니다.`,
+          explanation: `$\\sqrt{${a * a}} + \\sqrt{${b * b}} = ${a} + ${b} = ${ans}$ 입니다.`
+        };
+      } else if (type === 2) {
+        const r1 = randInt(1, 5);
+        const r2 = randInt(r1 + 1, 8);
+        const bCoef = -(r1 + r2);
+        const cCoef = r1 * r2;
+        const ans = r2;
+        const { options, correctIndex } = makeUniqueOptions(ans, 4, false);
+        return {
+          id: problemId,
+          orbJitter,
+          topic: '중3 · 이차방정식',
+          question: `이차방정식 $x^{2} ${bCoef}x + ${cCoef} = 0$ 의 두 근 중 큰 근은?`,
+          options,
+          correctIndex,
+          hint: `$(x - ${r1})(x - ${r2}) = 0$ 꼴로 인수분해해 보세요.`,
+          explanation: `인수분해하면 $(x - ${r1})(x - ${r2}) = 0$ 이므로 큰 근은 $${r2}$ 입니다.`
+        };
+      } else if (type === 3) {
+        const triples = [
+          [3, 4, 5],
+          [5, 12, 13],
+          [6, 8, 10],
+          [8, 15, 17],
+          [9, 12, 15]
+        ];
+        const [a, b, c] = triples[randInt(0, triples.length - 1)];
+        const { options, correctIndex } = makeUniqueOptions(c, 4, false);
+        return {
+          id: problemId,
+          orbJitter,
+          topic: '중3 · 피타고라스 정리',
+          question: `직각을 낀 두 변의 길이가 각각 $${a}, ${b}$ 인 직각삼각형의 빗변의 길이는?`,
+          options,
+          correctIndex,
+          hint: `빗변의 길이를 $c$ 라 하면 $c = \\sqrt{a^{2} + b^{2}}$ 입니다.`,
+          explanation: `$c = \\sqrt{${a}^{2} + ${b}^{2}} = \\sqrt{${a * a + b * b}} = ${c}$ 입니다.`
+        };
+      } else {
+        const p = randInt(-5, 5) || 2;
+        const q = randInt(-6, 8);
+        const ans = p + q;
+        const pStr = p > 0 ? `- ${p}` : `+ ${Math.abs(p)}`;
+        const qStr = q >= 0 ? `+ ${q}` : `- ${Math.abs(q)}`;
+        const { options, correctIndex } = makeUniqueOptions(ans, 4, true);
+        return {
+          id: problemId,
+          orbJitter,
+          topic: '중3 · 이차함수',
+          question: `이차함수 $y = 2(x ${pStr})^{2} ${qStr}$ 그래프의 꼭짓점 좌표가 $(p, q)$ 일 때, $p+q$ 의 값은?`,
+          options,
+          correctIndex,
+          hint: `$y = a(x-p)^{2} + q$ 의 꼭짓점의 좌표는 $(p, q)$ 입니다.`,
+          explanation: `꼭짓점의 좌표가 $(${p}, ${q})$ 이므로 $p + q = ${ans}$ 입니다.`
+        };
+      }
+    }
+
+    /**************************************************************
+     * 3. 게임 상수, 공정 동기화 파라미터 및 상태 관리
+     **************************************************************/
+    const ARENA_HALF = 58;
+    const MIN_SNAKE_LEN = 4;
+    const INITIAL_SNAKE_LEN = 8;
+
+    // [지연시간 유불리 해결 공식 상수]
+    const REVEAL_LOCK_MS = 550;       // 공식 1: 모든 참가자 동시 문제 오픈 대기 시간 (550ms)
+    const NET_SYNC_INTERVAL_MS = 66;  // 공식 2: 15Hz(66ms) 네트워크 브로드캐스트 주기
+    const ARBITRATION_WINDOW_MS = 95; // 공식 3: 동시 구슬 접촉 시 Δt(풀이 시간) 비교 버퍼 윈도우 (95ms)
+
+    const QUADRANT_ZONES = [
+      { label: 'A', dirText: '↖ 북서', colorHex: 0xff4b72, cssColor: '#ff4b72', baseX: -27, baseZ: -27 },
+      { label: 'B', dirText: '↗ 북동', colorHex: 0x00e5ff, cssColor: '#00e5ff', baseX:  27, baseZ: -27 },
+      { label: 'C', dirText: '↙ 남서', colorHex: 0xffbe0b, cssColor: '#ffbe0b', baseX: -27, baseZ:  27 },
+      { label: 'D', dirText: '↘ 남동', colorHex: 0xa855f7, cssColor: '#a855f7', baseX:  27, baseZ:  27 }
+    ];
+
+    const AI_PROFILES = [
+      { name: '피타고라스봇', color: 0xff758f, css: '#ff758f', iq: 0.78 },
+      { name: '오일러봇',     color: 0xffbe0b, css: '#ffbe0b', iq: 0.72 },
+      { name: '가우스봇',     color: 0xb5179e, css: '#b5179e', iq: 0.84 },
+      { name: '데카르트봇',   color: 0x4cc9f0, css: '#4cc9f0', iq: 0.68 },
+      { name: '페르마봇',     color: 0x80ed99, css: '#80ed99', iq: 0.75 }
+    ];
+
+    const state = {
+      running: false,
+      isMultiplayer: false,
+      playroomReady: false,
+      selectedGrade: 'all',
+      selectedAICount: 3,
+      score: 0,
+      streak: 0,
+      maxLen: INITIAL_SNAKE_LEN,
+      currentProblem: null,
+      lastRenderedProblemId: null,
+      problemRevealTime: 0,      // 공식 1 & 3: 로컬 화면에서 문제가 실제로 오픈된 시각 (performance.now())
+      isRevealLocked: false,     // 공식 1: 0.55초 동시 오픈 대기 중 여부
+      pendingClaims: [],         // 공식 3: 방장(Host)이 수집하는 Δt 구슬 획득 요청 버퍼
+      arbitrationTimer: null,
+      snakes: [],
+      remotePlayerMap: new Map(), // Playroom player.id -> Snake3D
+      aiSnakes: [],
+      player: null,
+      answerOrbs: [],
+      energyPellets: [],
+      keys: {},
+      mouseTargetAngle: null,
+      boosting: false,
+      lastNetSyncAt: 0
+    };
+
+    /**************************************************************
+     * 4. Three.js 3D 쿼터뷰 아레나 초기화
+     **************************************************************/
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070b19);
+    scene.fog = new THREE.FogExp2(0x070b19, 0.0045);
+
+    const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 400);
+    camera.position.set(0, 62, 52);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    dirLight.position.set(35, 80, 45);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const gridHelper = new THREE.GridHelper(ARENA_HALF * 2, 32, 0x00f2fe, 0x1e293b);
+    gridHelper.position.y = 0.02;
+    scene.add(gridHelper);
+
+    const floorGeo = new THREE.PlaneGeometry(ARENA_HALF * 2, ARENA_HALF * 2);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0b132b,
+      roughness: 0.85,
+      metalness: 0.15
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    const borderGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(ARENA_HALF * 2, 3.2, ARENA_HALF * 2));
+    const borderMat = new THREE.LineBasicMaterial({ color: 0x00f2fe });
+    const borderLines = new THREE.LineSegments(borderGeo, borderMat);
+    borderLines.position.y = 1.6;
+    scene.add(borderLines);
+
+    QUADRANT_ZONES.forEach(zone => {
+      const ringGeo = new THREE.RingGeometry(4.5, 5.3, 36);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: zone.colorHex,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.35
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.position.set(zone.baseX, 0.06, zone.baseZ);
+      scene.add(ringMesh);
+    });
+
+    /**************************************************************
+     * 5. 지렁이(Snake3D) 클래스 (로컬 예측 + 원격 60FPS Lerp 보간 지원)
+     **************************************************************/
+    const overlayContainer = document.getElementById('overlay-3d-labels');
+
+    class Snake3D {
+      constructor({ id, name, colorHex, cssColor, isPlayer, isRemote = false, startX, startZ, iq = 0.75 }) {
+        this.id = id;
+        this.name = name;
+        this.colorHex = colorHex;
+        this.cssColor = cssColor;
+        this.isPlayer = isPlayer;
+        this.isRemote = isRemote; // 원격 참가자 또는 비방장 화면의 AI
+        this.iq = iq;
+
+        this.targetLength = INITIAL_SNAKE_LEN;
+        this.score = 0;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = isPlayer ? 15.5 : 13.8;
+        this.turnSpeed = isPlayer ? 4.4 : 3.6;
+
+        this.x = startX;
+        this.z = startZ;
+        // 공식 2: 원격 지렁이 선형 보간(Lerp)용 목표 좌표
+        this.netX = startX;
+        this.netZ = startZ;
+        this.netAngle = this.angle;
+
+        this.collisionCooldown = 0;
+        this.shieldTimer = 0;
+
+        this.aiTargetIndex = 0;
+        this.aiRetargetTimer = 0;
+
+        this.pathHistory = [];
+        for (let i = 0; i < 240; i++) {
+          this.pathHistory.push({
+            x: startX - Math.cos(this.angle) * i * 0.25,
+            z: startZ - Math.sin(this.angle) * i * 0.25
+          });
+        }
+
+        this.group = new THREE.Group();
+        scene.add(this.group);
+
+        const headGeo = new THREE.SphereGeometry(1.25, 20, 20);
+        const headMat = new THREE.MeshStandardMaterial({
+          color: colorHex,
+          emissive: colorHex,
+          emissiveIntensity: 0.35,
+          roughness: 0.25,
+          metalness: 0.3
+        });
+        this.headMesh = new THREE.Mesh(headGeo, headMat);
+        this.headMesh.position.set(startX, 1.25, startZ);
+        this.group.add(this.headMesh);
+
+        const eyeGeo = new THREE.SphereGeometry(0.28, 10, 10);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(0.7, 0.55, -0.55);
+        rightEye.position.set(0.7, 0.55, 0.55);
+        this.headMesh.add(leftEye);
+        this.headMesh.add(rightEye);
+
+        // tagEl을 syncSegments() 호출 전에 먼저 생성하여 undefined 에러 방지
+        this.tagEl = document.createElement('div');
+        this.tagEl.className = 'snake-floating-tag';
+        this.tagEl.style.borderColor = cssColor;
+        overlayContainer.appendChild(this.tagEl);
+
+        this.segments = [];
+        this.syncSegments();
+      }
+
+      updateTagText() {
+        if (!this.tagEl) return;
+        this.tagEl.innerHTML = `<span style="color:${this.cssColor}">●</span> ${this.name} <strong>L:${this.targetLength}</strong>`;
+      }
+
+      syncSegments() {
+        const desiredBodyCount = Math.max(1, this.targetLength - 1);
+        while (this.segments.length < desiredBodyCount) {
+          const idx = this.segments.length;
+          const radius = Math.max(0.68, 1.05 - idx * 0.015);
+          const geo = new THREE.SphereGeometry(radius, 14, 14);
+          const mat = new THREE.MeshStandardMaterial({
+            color: this.colorHex,
+            emissive: this.colorHex,
+            emissiveIntensity: 0.18,
+            roughness: 0.35
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(this.x, radius, this.z);
+          this.group.add(mesh);
+          this.segments.push(mesh);
+        }
+        while (this.segments.length > desiredBodyCount) {
+          const old = this.segments.pop();
+          this.group.remove(old);
+          old.geometry.dispose();
+          old.material.dispose();
+        }
+        this.updateTagText();
+      }
+
+      pickAITarget() {
+        if (!state.answerOrbs.length) return;
+        const correctIdx = state.currentProblem ? state.currentProblem.correctIndex : 0;
+        if (Math.random() < this.iq) {
+          this.aiTargetIndex = correctIdx;
+        } else {
+          this.aiTargetIndex = randInt(0, state.answerOrbs.length - 1);
+        }
+      }
+
+      update(dt) {
+        if (this.collisionCooldown > 0) this.collisionCooldown -= dt;
+        if (this.shieldTimer > 0) {
+          this.shieldTimer -= dt;
+          this.headMesh.material.emissiveIntensity = 0.85;
+        } else {
+          this.headMesh.material.emissiveIntensity = 0.35;
+        }
+
+        // [공식 2] 원격 플레이어 또는 게스트 화면의 AI는 네트워크 수신 좌표로 부드럽게 60FPS Lerp 보간
+        if (this.isRemote) {
+          const lerpFactor = Math.min(1, dt * 14);
+          this.x += (this.netX - this.x) * lerpFactor;
+          this.z += (this.netZ - this.z) * lerpFactor;
+
+          let aDiff = this.netAngle - this.angle;
+          while (aDiff > Math.PI) aDiff -= Math.PI * 2;
+          while (aDiff < -Math.PI) aDiff += Math.PI * 2;
+          this.angle += aDiff * lerpFactor;
+        } else if (this.isPlayer) {
+          // 로컬 플레이어는 0ms 입력 지연(Zero Input Lag)으로 즉시 이동
+          if (state.keys['ArrowLeft'] || state.keys['KeyA']) {
+            this.angle -= this.turnSpeed * dt;
+            state.mouseTargetAngle = null;
+          }
+          if (state.keys['ArrowRight'] || state.keys['KeyD']) {
+            this.angle += this.turnSpeed * dt;
+            state.mouseTargetAngle = null;
+          }
+          if (state.mouseTargetAngle !== null) {
+            let diff = state.mouseTargetAngle - this.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            this.angle += Math.sign(diff) * Math.min(Math.abs(diff), this.turnSpeed * 1.4 * dt);
+          }
+
+          const currentSpeed = (state.boosting && this.targetLength > MIN_SNAKE_LEN)
+            ? this.speed * 1.48
+            : this.speed;
+
+          this.x += Math.cos(this.angle) * currentSpeed * dt;
+          this.z += Math.sin(this.angle) * currentSpeed * dt;
+        } else {
+          // 호스트 또는 로컬 싱글의 AI 이동 연산
+          this.aiRetargetTimer -= dt;
+          if (this.aiRetargetTimer <= 0) {
+            this.pickAITarget();
+            this.aiRetargetTimer = 2.5 + Math.random() * 2.0;
+          }
+          const targetOrb = state.answerOrbs[this.aiTargetIndex] || state.answerOrbs[0];
+          if (targetOrb && !state.isRevealLocked) {
+            const desiredAngle = Math.atan2(targetOrb.z - this.z, targetOrb.x - this.x);
+            let diff = desiredAngle - this.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            this.angle += Math.sign(diff) * Math.min(Math.abs(diff), this.turnSpeed * dt);
+          }
+
+          this.x += Math.cos(this.angle) * this.speed * dt;
+          this.z += Math.sin(this.angle) * this.speed * dt;
+        }
+
+        const limit = ARENA_HALF - 1.8;
+        if (this.x > limit) { this.x = limit; this.angle = Math.PI - this.angle; }
+        if (this.x < -limit) { this.x = -limit; this.angle = Math.PI - this.angle; }
+        if (this.z > limit) { this.z = limit; this.angle = -this.angle; }
+        if (this.z < -limit) { this.z = -limit; this.angle = -this.angle; }
+
+        this.headMesh.position.set(this.x, 1.25, this.z);
+        this.headMesh.rotation.y = -this.angle;
+
+        // 이동 거리가 일정 이상일 때만 경로 히스토리 추가
+        const headHist = this.pathHistory[0];
+        if (!headHist || Math.hypot(this.x - headHist.x, this.z - headHist.z) > 0.18) {
+          this.pathHistory.unshift({ x: this.x, z: this.z });
+          if (this.pathHistory.length > 600) this.pathHistory.pop();
+        }
+
+        const stepStride = 4;
+        for (let i = 0; i < this.segments.length; i++) {
+          const histIdx = Math.min((i + 1) * stepStride, this.pathHistory.length - 1);
+          const pt = this.pathHistory[histIdx];
+          this.segments[i].position.x = pt.x;
+          this.segments[i].position.z = pt.z;
+        }
+      }
+
+      respawnAI() {
+        this.targetLength = INITIAL_SNAKE_LEN;
+        this.x = randInt(-ARENA_HALF + 12, ARENA_HALF - 12);
+        this.z = randInt(-ARENA_HALF + 12, ARENA_HALF - 12);
+        this.netX = this.x;
+        this.netZ = this.z;
+        this.collisionCooldown = 2.0;
+        this.syncSegments();
+      }
+
+      destroy() {
+        scene.remove(this.group);
+        if (this.tagEl && this.tagEl.parentNode) {
+          this.tagEl.parentNode.removeChild(this.tagEl);
+        }
+      }
+    }
+
+    /**************************************************************
+     * 6. 4방위 정답 구슬(빛기둥 비콘 + 바닥 링 + 화면 가장자리 가이드)
+     **************************************************************/
+    function clearAnswerOrbs() {
+      state.answerOrbs.forEach(orb => {
+        scene.remove(orb.group);
+        if (orb.floatingEl && orb.floatingEl.parentNode) orb.floatingEl.parentNode.removeChild(orb.floatingEl);
+        if (orb.edgeEl && orb.edgeEl.parentNode) orb.edgeEl.parentNode.removeChild(orb.edgeEl);
+      });
+      state.answerOrbs = [];
+    }
+
+    function spawnAnswerOrbsForProblem(problem) {
+      clearAnswerOrbs();
+
+      QUADRANT_ZONES.forEach((zone, idx) => {
+        const jit = (problem.orbJitter && problem.orbJitter[idx]) ? problem.orbJitter[idx] : { jx: 0, jz: 0 };
+        const x = zone.baseX + jit.jx;
+        const z = zone.baseZ + jit.jz;
+
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+
+        const sphereGeo = new THREE.SphereGeometry(1.75, 24, 24);
+        const sphereMat = new THREE.MeshStandardMaterial({
+          color: zone.colorHex,
+          emissive: zone.colorHex,
+          emissiveIntensity: 0.7,
+          roughness: 0.15,
+          metalness: 0.4
+        });
+        const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+        sphereMesh.position.y = 2.1;
+        group.add(sphereMesh);
+
+        const beamGeo = new THREE.CylinderGeometry(0.45, 1.35, 30, 18, 1, true);
+        const beamMat = new THREE.MeshBasicMaterial({
+          color: zone.colorHex,
+          transparent: true,
+          opacity: 0.24,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+        const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+        beamMesh.position.y = 15;
+        group.add(beamMesh);
+
+        const haloGeo = new THREE.RingGeometry(2.2, 2.9, 28);
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: zone.colorHex,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.75
+        });
+        const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+        haloMesh.rotation.x = -Math.PI / 2;
+        haloMesh.position.y = 0.12;
+        group.add(haloMesh);
+
+        scene.add(group);
+
+        const floatingEl = document.createElement('div');
+        floatingEl.className = 'orb-floating-label';
+        floatingEl.style.borderColor = zone.cssColor;
+
+        const badgeSpan = document.createElement('span');
+        badgeSpan.style.background = zone.cssColor;
+        badgeSpan.style.color = '#071020';
+        badgeSpan.style.padding = '2px 7px';
+        badgeSpan.style.borderRadius = '6px';
+        badgeSpan.style.fontWeight = '900';
+        badgeSpan.textContent = zone.label;
+
+        const valSpan = document.createElement('span');
+        renderMathContent(valSpan, problem.options[idx], true);
+
+        floatingEl.appendChild(badgeSpan);
+        floatingEl.appendChild(valSpan);
+        overlayContainer.appendChild(floatingEl);
+
+        const edgeEl = document.createElement('div');
+        edgeEl.className = 'orb-edge-indicator';
+        edgeEl.style.borderColor = zone.cssColor;
+        edgeEl.style.display = 'none';
+
+        const arrowSpan = document.createElement('span');
+        arrowSpan.style.display = 'inline-block';
+        arrowSpan.textContent = '➤';
+
+        const labelStrong = document.createElement('strong');
+        labelStrong.style.color = zone.cssColor;
+        labelStrong.textContent = zone.label;
+
+        const edgeValSpan = document.createElement('span');
+        renderMathContent(edgeValSpan, problem.options[idx], true);
+
+        const distSmall = document.createElement('small');
+        distSmall.style.opacity = '0.75';
+
+        edgeEl.appendChild(arrowSpan);
+        edgeEl.appendChild(labelStrong);
+        edgeEl.appendChild(edgeValSpan);
+        edgeEl.appendChild(distSmall);
+        overlayContainer.appendChild(edgeEl);
+
+        state.answerOrbs.push({
+          index: idx,
+          zone,
+          valueText: problem.options[idx],
+          x,
+          z,
+          group,
+          sphereMesh,
+          haloMesh,
+          floatingEl,
+          edgeEl,
+          arrowSpan,
+          distSmall
+        });
+      });
+
+      state.aiSnakes.forEach(ai => ai.pickAITarget());
+    }
+
+    /**************************************************************
+     * 7. 보너스 에너지 펠릿
+     **************************************************************/
+    function spawnEnergyPellets(count = 22) {
+      state.energyPellets.forEach(p => scene.remove(p.mesh));
+      state.energyPellets = [];
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.OctahedronGeometry(0.65, 0);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x7ef9ff,
+          emissive: 0x00f2fe,
+          emissiveIntensity: 0.6
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        const x = randInt(-ARENA_HALF + 6, ARENA_HALF - 6);
+        const z = randInt(-ARENA_HALF + 6, ARENA_HALF - 6);
+        mesh.position.set(x, 0.9, z);
+        scene.add(mesh);
+        state.energyPellets.push({ mesh, x, z, accum: Math.random() * 5 });
+      }
+    }
+
+    /**************************************************************
+     * 8. [공식 1] 동시 문제 오픈 딜레이 (0.55초 Fair Sync Lock) & KaTeX 적용
+     **************************************************************/
+    function applyProblemToClientUI(prob) {
+      if (!prob || state.lastRenderedProblemId === prob.id) return;
+      state.lastRenderedProblemId = prob.id;
+      state.currentProblem = prob;
+
+      document.getElementById('hud-topic').textContent = prob.topic;
+      const qEl = document.getElementById('hud-question');
+      renderMathContent(qEl, prob.question, false);
+
+      const hintBox = document.getElementById('hud-hint-box');
+      hintBox.classList.add('hidden');
+      renderMathContent(hintBox, `💡 힌트: ${prob.hint}`, false);
+
+      prob.options.forEach((optVal, idx) => {
+        const el = document.getElementById(`opt-val-${idx}`);
+        renderMathContent(el, optVal, true);
+      });
+
+      spawnAnswerOrbsForProblem(prob);
+
+      // [공식 1 적용] 문제 수신 직후 0.55초 동안 블러 + 카운트다운을 걸어 방장과 참가자가 동시에 문제를 읽도록 동기화
+      state.isRevealLocked = true;
+      const syncOverlay = document.getElementById('fair-sync-overlay');
+      qEl.classList.add('sync-locked');
+      syncOverlay.classList.remove('hidden');
+
+      setTimeout(() => {
+        state.isRevealLocked = false;
+        state.problemRevealTime = performance.now(); // 각 클라이언트가 문제를 실제로 본 기준 시각 기록
+        qEl.classList.remove('sync-locked');
+        syncOverlay.classList.add('hidden');
+      }, REVEAL_LOCK_MS);
+    }
+
+    function hostGenerateAndBroadcastProblem() {
+      const prob = generateMathProblem(state.selectedGrade);
+      state.pendingClaims = [];
+      if (state.arbitrationTimer) {
+        clearTimeout(state.arbitrationTimer);
+        state.arbitrationTimer = null;
+      }
+
+      if (state.isMultiplayer && window.Playroom && Playroom.isHost()) {
+        Playroom.setState('activeProblem', prob, true);
+      }
+      applyProblemToClientUI(prob);
+    }
+
+    function showToast(text, bgColor = 'rgba(0, 242, 254, 0.25)', borderColor = '#00f2fe') {
+      const wrap = document.getElementById('toast-container');
+      const div = document.createElement('div');
+      div.className = 'toast-msg';
+      div.style.background = bgColor;
+      div.style.border = `1px solid ${borderColor}`;
+      div.textContent = text;
+      wrap.appendChild(div);
+      setTimeout(() => {
+        if (div.parentNode) div.parentNode.removeChild(div);
+      }, 2400);
+    }
+
+    function updateHUDStats() {
+      if (!state.player) return;
+      document.getElementById('hud-score').textContent = state.score;
+      document.getElementById('hud-length').textContent = state.player.targetLength;
+      document.getElementById('hud-streak').textContent = `${state.streak} 🔥`;
+
+      const sorted = [...state.snakes].sort((a, b) => b.targetLength - a.targetLength);
+      const lbList = document.getElementById('lb-list');
+      lbList.innerHTML = '';
+      sorted.forEach((s, idx) => {
+        const row = document.createElement('div');
+        row.className = 'lb-item' + (s.isPlayer ? ' me' : '');
+        row.innerHTML = `
+          <div class="lb-name">
+            <span>${idx + 1}.</span>
+            <span class="lb-dot" style="background:${s.cssColor}"></span>
+            <span>${s.name}</span>
+          </div>
+          <span>L:${s.targetLength}</span>
+        `;
+        lbList.appendChild(row);
+      });
+    }
+
+    /**************************************************************
+     * 9. [공식 3] Δt(풀이 소요시간) 기반 RPC 공정 구슬 판정 시스템
+     **************************************************************/
+    function submitOrbClaim(claimerSnake, orbIndex) {
+      if (!state.currentProblem || state.isRevealLocked) return;
+
+      const elapsedMs = Math.max(50, Math.round(performance.now() - state.problemRevealTime));
+      const payload = {
+        problemId: state.currentProblem.id,
+        orbIndex,
+        claimerId: claimerSnake.id,
+        claimerName: claimerSnake.name,
+        isPlayerClaim: claimerSnake.isPlayer,
+        elapsedMs
+      };
+
+      // 멀티플레이어인 경우 Playroom RPC로 방장(Host)에게 공정 판정 요청 전송
+      if (state.isMultiplayer && window.Playroom && Playroom.RPC) {
+        Playroom.RPC.call('claimOrb', payload, Playroom.RPC.Mode.HOST);
+      } else {
+        hostProcessOrbClaim(payload);
+      }
+    }
+
+    function hostProcessOrbClaim(data) {
+      if (!state.currentProblem || data.problemId !== state.currentProblem.id) return;
+
+      const isCorrect = (data.orbIndex === state.currentProblem.correctIndex);
+
+      if (!isCorrect) {
+        // 오답 구슬은 즉시 감점 이벤트 브로드캐스트
+        const wrongResult = {
+          type: 'wrong',
+          problemId: data.problemId,
+          orbIndex: data.orbIndex,
+          claimerId: data.claimerId,
+          claimerName: data.claimerName
+        };
+        if (state.isMultiplayer && window.Playroom && Playroom.RPC) {
+          Playroom.RPC.call('orbOutcome', wrongResult, Playroom.RPC.Mode.ALL);
+        } else {
+          applyOrbOutcomeToClient(wrongResult);
+        }
+        return;
+      }
+
+      // [공식 3 핵심] 정답 구슬 요청이 들어오면 95ms 동안 동시 요청을 수집하여 풀이 소요시간(elapsedMs)이 가장 짧은 플레이어에게 승리 부여!
+      state.pendingClaims.push(data);
+
+      if (!state.arbitrationTimer) {
+        state.arbitrationTimer = setTimeout(() => {
+          state.arbitrationTimer = null;
+          if (!state.pendingClaims.length) return;
+
+          // elapsedMs(문제 오픈 후 구슬 도달까지 걸린 순수 시간) 오름차순 정렬
+          state.pendingClaims.sort((a, b) => a.elapsedMs - b.elapsedMs);
+          const winner = state.pendingClaims[0];
+          const runnerUp = state.pendingClaims.length > 1 ? state.pendingClaims[1] : null;
+          state.pendingClaims = [];
+
+          const outcomePayload = {
+            type: 'correct',
+            problemId: winner.problemId,
+            orbIndex: winner.orbIndex,
+            winnerId: winner.claimerId,
+            winnerName: winner.claimerName,
+            elapsedMs: winner.elapsedMs,
+            runnerUpName: runnerUp ? runnerUp.claimerName : null,
+            diffMs: runnerUp ? (runnerUp.elapsedMs - winner.elapsedMs) : 0
+          };
+
+          if (state.isMultiplayer && window.Playroom && Playroom.RPC) {
+            Playroom.RPC.call('orbOutcome', outcomePayload, Playroom.RPC.Mode.ALL);
+          } else {
+            applyOrbOutcomeToClient(outcomePayload);
+          }
+
+          // 새 문제 생성 및 전체 동기화
+          hostGenerateAndBroadcastProblem();
+        }, ARBITRATION_WINDOW_MS);
+      }
+    }
+
+    function applyOrbOutcomeToClient(outcome) {
+      const targetSnake = state.snakes.find(s => s.id === outcome.winnerId || s.id === outcome.claimerId);
+      const zoneLabel = QUADRANT_ZONES[outcome.orbIndex]?.label || 'A';
+
+      if (outcome.type === 'correct') {
+        const secStr = (outcome.elapsedMs / 1000).toFixed(2);
+        if (targetSnake) {
+          targetSnake.targetLength += 2;
+          targetSnake.syncSegments();
+        }
+
+        if (state.player && outcome.winnerId === state.player.id) {
+          state.streak += 1;
+          state.score += 100 + state.streak * 15;
+          if (state.player.targetLength > state.maxLen) state.maxLen = state.player.targetLength;
+
+          const vsMsg = outcome.runnerUpName
+            ? ` (간발의 차 Δt ${outcome.diffMs}ms 앞섬!)`
+            : '';
+          showToast(`⭕ 공정 판정 정답! (${zoneLabel} · 풀이 ${secStr}초)${vsMsg} 길이 +2`, 'rgba(0, 242, 254, 0.32)', '#00f2fe');
+        } else {
+          showToast(`⚡ ${outcome.winnerName} 정답 선취! (${zoneLabel} · 풀이 ${secStr}초)`, 'rgba(196, 113, 237, 0.32)', '#c471ed');
+        }
+        updateHUDStats();
+      } else if (outcome.type === 'wrong') {
+        const orb = state.answerOrbs[outcome.orbIndex];
+        if (orb) {
+          orb.x = orb.zone.baseX + randInt(-4, 4);
+          orb.z = orb.zone.baseZ + randInt(-4, 4);
+          orb.group.position.set(orb.x, 0, orb.z);
+        }
+
+        if (targetSnake) {
+          targetSnake.targetLength -= 2;
+          targetSnake.collisionCooldown = 1.0;
+
+          if (targetSnake.isPlayer) {
+            state.streak = 0;
+            showToast(`❌ 오답 구슬(${zoneLabel})! 길이가 -2 감소합니다.`, 'rgba(246, 79, 89, 0.35)', '#f64f59');
+            if (targetSnake.targetLength < MIN_SNAKE_LEN) {
+              triggerGameOver(`오답 구슬 충돌로 최소 길이(${MIN_SNAKE_LEN}) 미만으로 줄어들었습니다.`);
+              return;
+            }
+          } else if (!targetSnake.isRemote && targetSnake.targetLength < MIN_SNAKE_LEN) {
+            targetSnake.respawnAI();
+          }
+          targetSnake.syncSegments();
+        }
+        updateHUDStats();
+      }
+    }
+
+    /**************************************************************
+     * 10. 뱀끼리 충돌 시 길이 차이(ΔL) 비례 감소 시스템
+     **************************************************************/
+    function checkSnakeCollisions() {
+      const snakes = state.snakes;
+      for (let i = 0; i < snakes.length; i++) {
+        const snakeA = snakes[i];
+        if (snakeA.collisionCooldown > 0) continue;
+        // 원격 지렁이는 자신의 로컬 클라이언트에서 충돌을 계산하므로 중복 판정 방지
+        if (snakeA.isRemote) continue;
+
+        for (let j = 0; j < snakes.length; j++) {
+          if (i === j) continue;
+          const snakeB = snakes[j];
+
+          let hit = false;
+          const headDist = Math.hypot(snakeA.x - snakeB.x, snakeA.z - snakeB.z);
+          if (headDist < 2.35) {
+            hit = true;
+          } else {
+            for (let k = 0; k < snakeB.segments.length; k++) {
+              const seg = snakeB.segments[k];
+              const d = Math.hypot(snakeA.x - seg.position.x, snakeA.z - seg.position.z);
+              if (d < 1.85) {
+                hit = true;
+                break;
+              }
+            }
+          }
+
+          if (hit) {
+            handleLengthBasedCollision(snakeA, snakeB);
+            break;
+          }
+        }
+      }
+    }
+
+    function handleLengthBasedCollision(attacker, defender) {
+      attacker.collisionCooldown = 1.35;
+      const pushAngle = Math.atan2(attacker.z - defender.z, attacker.x - defender.x);
+      attacker.x += Math.cos(pushAngle) * 3.0;
+      attacker.z += Math.sin(pushAngle) * 3.0;
+      attacker.angle = pushAngle;
+
+      const lenA = attacker.targetLength;
+      const lenB = defender.targetLength;
+      const diff = Math.abs(lenB - lenA);
+
+      if (lenA < lenB) {
+        const loss = Math.max(1, Math.min(6, diff));
+        attacker.targetLength -= loss;
+        attacker.shieldTimer = 1.2;
+
+        if (attacker.isPlayer) {
+          showToast(
+            `💥 더 긴 뱀(${defender.name}, L:${lenB})과 충돌! 길이 차이만큼 -${loss} 감소!`,
+            'rgba(246, 79, 89, 0.32)',
+            '#f64f59'
+          );
+        }
+
+        if (attacker.targetLength < MIN_SNAKE_LEN) {
+          if (attacker.isPlayer) {
+            triggerGameOver(`더 긴 라이벌(${defender.name})과 충돌하여 최소 길이(${MIN_SNAKE_LEN}) 미만으로 줄어들었습니다.`);
+            return;
+          } else {
+            attacker.respawnAI();
+          }
+        } else {
+          attacker.syncSegments();
+        }
+      } else if (lenA > lenB) {
+        const steal = Math.max(1, Math.min(5, diff));
+        if (!defender.isRemote) {
+          defender.targetLength -= steal;
+          defender.collisionCooldown = 1.35;
+          if (defender.targetLength < MIN_SNAKE_LEN) {
+            defender.respawnAI();
+          } else {
+            defender.syncSegments();
+          }
+        }
+        attacker.targetLength += 1;
+        attacker.syncSegments();
+
+        if (attacker.isPlayer) {
+          state.score += 15;
+          if (attacker.targetLength > state.maxLen) state.maxLen = attacker.targetLength;
+          showToast(
+            `⚡ 길이 우위 승리! ${defender.name}에게 우위를 점하고 길이 +1 흡수!`,
+            'rgba(0, 242, 254, 0.28)',
+            '#00f2fe'
+          );
+        }
+      } else {
+        attacker.targetLength -= 1;
+        if (attacker.isPlayer) {
+          showToast(`⚔️ 동일 길이 충돌! 길이가 -1 감소합니다.`, 'rgba(255, 190, 11, 0.3)', '#ffbe0b');
+        }
+        if (attacker.targetLength < MIN_SNAKE_LEN) {
+          if (attacker.isPlayer) {
+            triggerGameOver(`충돌로 인해 최소 길이(${MIN_SNAKE_LEN}) 미만으로 줄어들었습니다.`);
+            return;
+          } else {
+            attacker.respawnAI();
+          }
+        } else {
+          attacker.syncSegments();
+        }
+      }
+
+      updateHUDStats();
+    }
+
+    /**************************************************************
+     * 11. 정답 구슬 & 에너지 펠릿 획득 판정
+     **************************************************************/
+    function checkOrbPickups(dt) {
+      state.energyPellets.forEach(p => {
+        p.accum += dt * 2.5;
+        p.mesh.rotation.y = p.accum;
+        state.snakes.forEach(s => {
+          if (s.isRemote) return;
+          if (Math.hypot(s.x - p.x, s.z - p.z) < 2.1) {
+            p.x = randInt(-ARENA_HALF + 6, ARENA_HALF - 6);
+            p.z = randInt(-ARENA_HALF + 6, ARENA_HALF - 6);
+            p.mesh.position.set(p.x, 0.9, p.z);
+            if (s.isPlayer) {
+              state.score += 5;
+              updateHUDStats();
+            }
+          }
+        });
+      });
+
+      if (state.isRevealLocked) return; // 공식 1: 0.55초 동시 오픈 전에는 구슬 획득 불가
+
+      for (let i = 0; i < state.answerOrbs.length; i++) {
+        const orb = state.answerOrbs[i];
+        orb.haloMesh.rotation.z += dt * 1.8;
+        orb.sphereMesh.position.y = 2.1 + Math.sin(performance.now() * 0.004 + i) * 0.35;
+
+        for (let j = 0; j < state.snakes.length; j++) {
+          const s = state.snakes[j];
+          if (s.isRemote || s.collisionCooldown > 0) continue;
+
+          const d = Math.hypot(s.x - orb.x, s.z - orb.z);
+          if (d < 2.85) {
+            s.collisionCooldown = 0.85; // 중복 클레임 방지
+            submitOrbClaim(s, orb.index);
+            return;
+          }
+        }
+      }
+    }
+
+    /**************************************************************
+     * 12. 3D 좌표 -> 화면 투영 (구슬 라벨 & 가장자리 화살표) + 미니맵
+     **************************************************************/
+    const radarCanvas = document.getElementById('radar-canvas');
+    const radarCtx = radarCanvas.getContext('2d');
+
+    function updateOverlaysAndRadar() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const halfW = w / 2;
+      const halfH = h / 2;
+
+      // 상단 풀이 경과 시간(Δt) 타이머 표시
+      const timerPill = document.getElementById('hud-timer-pill');
+      if (state.isRevealLocked) {
+        timerPill.textContent = '⏳ 동시 오픈 대기';
+      } else if (state.problemRevealTime > 0) {
+        const elapsedSec = ((performance.now() - state.problemRevealTime) / 1000).toFixed(1);
+        timerPill.textContent = `⏱️ Δt: ${elapsedSec}s`;
+      }
+
+      state.snakes.forEach(s => {
+        if (!s.tagEl) return;
+        const pos = new THREE.Vector3(s.x, 3.2, s.z);
+        pos.project(camera);
+        if (pos.z < 1) {
+          const sx = (pos.x * halfW) + halfW;
+          const sy = -(pos.y * halfH) + halfH;
+          s.tagEl.style.display = 'block';
+          s.tagEl.style.left = `${sx}px`;
+          s.tagEl.style.top = `${sy}px`;
+        } else {
+          s.tagEl.style.display = 'none';
+        }
+      });
+
+      state.answerOrbs.forEach(orb => {
+        const pos = new THREE.Vector3(orb.x, 4.5, orb.z);
+        pos.project(camera);
+        const sx = (pos.x * halfW) + halfW;
+        const sy = -(pos.y * halfH) + halfH;
+
+        const margin = 56;
+        const isInsideScreen = (pos.z < 1 && sx > margin && sx < w - margin && sy > margin && sy < h - margin);
+
+        if (isInsideScreen) {
+          orb.floatingEl.style.display = 'flex';
+          orb.floatingEl.style.left = `${sx}px`;
+          orb.floatingEl.style.top = `${sy}px`;
+          orb.edgeEl.style.display = 'none';
+        } else {
+          orb.floatingEl.style.display = 'none';
+          orb.edgeEl.style.display = 'flex';
+
+          const px = state.player ? state.player.x : 0;
+          const pz = state.player ? state.player.z : 0;
+          const angle = Math.atan2(orb.z - pz, orb.x - px);
+          const dist = Math.round(Math.hypot(orb.x - px, orb.z - pz));
+
+          const clampedX = Math.max(margin, Math.min(w - margin, halfW + Math.cos(angle) * (halfW - margin)));
+          const clampedY = Math.max(margin + 60, Math.min(h - margin - 40, halfH + Math.sin(angle) * (halfH - margin - 60)));
+
+          const deg = Math.round((angle * 180) / Math.PI);
+          orb.edgeEl.style.left = `${clampedX}px`;
+          orb.edgeEl.style.top = `${clampedY}px`;
+          orb.arrowSpan.style.transform = `rotate(${deg}deg)`;
+          orb.distSmall.textContent = `${dist}m`;
+        }
+      });
+
+      const rw = radarCanvas.width;
+      const rh = radarCanvas.height;
+      radarCtx.clearRect(0, 0, rw, rh);
+
+      radarCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+      radarCtx.lineWidth = 1;
+      radarCtx.beginPath();
+      radarCtx.moveTo(rw / 2, 0); radarCtx.lineTo(rw / 2, rh);
+      radarCtx.moveTo(0, rh / 2); radarCtx.lineTo(rw, rh / 2);
+      radarCtx.stroke();
+
+      const toRadar = (wx, wz) => ({
+        rx: ((wx + ARENA_HALF) / (ARENA_HALF * 2)) * (rw - 16) + 8,
+        ry: ((wz + ARENA_HALF) / (ARENA_HALF * 2)) * (rh - 16) + 8
+      });
+
+      state.answerOrbs.forEach(orb => {
+        const { rx, ry } = toRadar(orb.x, orb.z);
+        radarCtx.fillStyle = orb.zone.cssColor;
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, 7.5, 0, Math.PI * 2);
+        radarCtx.fill();
+
+        radarCtx.fillStyle = '#061020';
+        radarCtx.font = 'bold 10px Pretendard, sans-serif';
+        radarCtx.textAlign = 'center';
+        radarCtx.textBaseline = 'middle';
+        radarCtx.fillText(orb.zone.label, rx, ry);
+      });
+
+      state.snakes.forEach(s => {
+        const { rx, ry } = toRadar(s.x, s.z);
+        radarCtx.fillStyle = s.isPlayer ? '#ffffff' : s.cssColor;
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, s.isPlayer ? 5.5 : 4, 0, Math.PI * 2);
+        radarCtx.fill();
+        if (s.isPlayer) {
+          radarCtx.strokeStyle = '#00f2fe';
+          radarCtx.lineWidth = 2;
+          radarCtx.stroke();
+        }
+      });
+    }
+
+    /**************************************************************
+     * 13. Playroom Kit 멀티플레이어 브릿지 & 실시간 상태 동기화 (15Hz)
+     **************************************************************/
+    async function startPlayroomMultiplayer() {
+      if (!window.Playroom) {
+        showToast('⚠️ Playroom Kit 스크립트를 불러오지 못해 로컬 모드로 전환합니다.', 'rgba(246,79,89,0.35)', '#f64f59');
+        startGameSession(false);
+        return;
+      }
+
+      const btn = document.getElementById('start-multi-btn');
+      const origText = btn.textContent;
+      btn.textContent = '⏳ Playroom 멀티플레이 로비 연결 중...';
+
+      try {
+        await Playroom.insertCoin({
+          skipLobby: false,
+          maxPlayersPerRoom: 8
+        });
+
+        state.playroomReady = true;
+
+        // RPC 핸들러 등록 (공식 3: Δt 구슬 판정 및 결과 브로드캐스트)
+        Playroom.RPC.register('claimOrb', async (data) => {
+          if (Playroom.isHost()) {
+            hostProcessOrbClaim(data);
+          }
+        });
+
+        Playroom.RPC.register('orbOutcome', async (data) => {
+          applyOrbOutcomeToClient(data);
+        });
+
+        startGameSession(true);
+
+        // 참가자 입장/퇴장 감지
+        Playroom.onPlayerJoin((PrPlayer) => {
+          const myId = Playroom.myPlayer().id;
+          if (PrPlayer.id === myId) return;
+
+          const profile = PrPlayer.getProfile();
+          const pName = PrPlayer.getState('name') || (profile && profile.name) || '참가자';
+          const pColorHex = (profile && profile.color && profile.color.hex) ? profile.color.hex : 0x38ef7d;
+          const pCss = (profile && profile.color && profile.color.hexString) ? profile.color.hexString : '#38ef7d';
+
+          const remoteSnake = new Snake3D({
+            id: PrPlayer.id,
+            name: pName,
+            colorHex: pColorHex,
+            cssColor: pCss,
+            isPlayer: false,
+            isRemote: true,
+            startX: randInt(-14, 14),
+            startZ: randInt(-14, 14)
+          });
+
+          state.remotePlayerMap.set(PrPlayer.id, { prPlayer: PrPlayer, snake: remoteSnake });
+          state.snakes.push(remoteSnake);
+          updateHUDStats();
+          showToast(`👋 ${pName}님이 아레나에 입장했습니다!`);
+
+          PrPlayer.onQuit(() => {
+            const entry = state.remotePlayerMap.get(PrPlayer.id);
+            if (entry) {
+              entry.snake.destroy();
+              state.snakes = state.snakes.filter(s => s.id !== PrPlayer.id);
+              state.remotePlayerMap.delete(PrPlayer.id);
+              updateHUDStats();
+            }
+          });
+        });
+      } catch (err) {
+        btn.textContent = origText;
+        showToast('멀티플레이 연결이 취소되었거나 실패했습니다.', 'rgba(246,79,89,0.35)', '#f64f59');
+      }
+    }
+
+    function syncMultiplayerTick(now) {
+      if (!state.isMultiplayer || !state.playroomReady || !window.Playroom) return;
+
+      // 1) 15Hz (66ms) 주기로 내 지렁이 상태 송신 + 방장인 경우 AI 지렁이 상태 송신
+      if (now - state.lastNetSyncAt >= NET_SYNC_INTERVAL_MS) {
+        state.lastNetSyncAt = now;
+        const me = Playroom.myPlayer();
+        if (me && state.player) {
+          me.setState('snakeState', {
+            x: Math.round(state.player.x * 100) / 100,
+            z: Math.round(state.player.z * 100) / 100,
+            angle: Math.round(state.player.angle * 100) / 100,
+            len: state.player.targetLength,
+            name: state.player.name
+          }, false);
+        }
+
+        if (Playroom.isHost() && state.aiSnakes.length > 0) {
+          const aiPayload = state.aiSnakes.map(ai => ({
+            id: ai.id,
+            x: Math.round(ai.x * 100) / 100,
+            z: Math.round(ai.z * 100) / 100,
+            angle: Math.round(ai.angle * 100) / 100,
+            len: ai.targetLength
+          }));
+          Playroom.setState('aiStates', aiPayload, false);
+        }
+      }
+
+      // 2) 원격 플레이어들의 목표 좌표(netX, netZ, netAngle) 갱신
+      state.remotePlayerMap.forEach(({ prPlayer, snake }) => {
+        const st = prPlayer.getState('snakeState');
+        if (st) {
+          snake.netX = st.x;
+          snake.netZ = st.z;
+          snake.netAngle = st.angle;
+          if (st.name && snake.name !== st.name) {
+            snake.name = st.name;
+            snake.updateTagText();
+          }
+          if (st.len && snake.targetLength !== st.len) {
+            snake.targetLength = st.len;
+            snake.syncSegments();
+            updateHUDStats();
+          }
+        }
+      });
+
+      // 3) 게스트(비방장)인 경우 방장이 출제한 문제 및 AI 지렁이 좌표 수신
+      if (!Playroom.isHost()) {
+        const hostProb = Playroom.getState('activeProblem');
+        if (hostProb && hostProb.id !== state.lastRenderedProblemId) {
+          applyProblemToClientUI(hostProb);
+        }
+
+        const aiStates = Playroom.getState('aiStates');
+        if (Array.isArray(aiStates)) {
+          aiStates.forEach(aiData => {
+            const aiSnake = state.aiSnakes.find(a => a.id === aiData.id);
+            if (aiSnake) {
+              aiSnake.netX = aiData.x;
+              aiSnake.netZ = aiData.z;
+              aiSnake.netAngle = aiData.angle;
+              if (aiData.len && aiSnake.targetLength !== aiData.len) {
+                aiSnake.targetLength = aiData.len;
+                aiSnake.syncSegments();
+              }
+            }
+          });
+        }
+      }
+    }
+
+    /**************************************************************
+     * 14. 게임 시작 / 종료 흐름
+     **************************************************************/
+    function startGameSession(isMultiplayer = false) {
+      state.snakes.forEach(s => s.destroy());
+      state.snakes = [];
+      state.aiSnakes = [];
+      state.remotePlayerMap.clear();
+      clearAnswerOrbs();
+
+      state.isMultiplayer = isMultiplayer;
+      state.score = 0;
+      state.streak = 0;
+      state.maxLen = INITIAL_SNAKE_LEN;
+      state.mouseTargetAngle = null;
+      state.lastRenderedProblemId = null;
+
+      const nickInput = document.getElementById('player-nickname').value.trim() || '수학마스터';
+      const myId = (isMultiplayer && window.Playroom && Playroom.myPlayer())
+        ? Playroom.myPlayer().id
+        : 'local_player';
+
+      if (isMultiplayer && window.Playroom && Playroom.myPlayer()) {
+        Playroom.myPlayer().setState('name', nickInput, true);
+      }
+
+      const player = new Snake3D({
+        id: myId,
+        name: nickInput,
+        colorHex: 0x00f2fe,
+        cssColor: '#00f2fe',
+        isPlayer: true,
+        isRemote: false,
+        startX: randInt(-8, 8),
+        startZ: randInt(-8, 8)
+      });
+      state.player = player;
+      state.snakes.push(player);
+
+      // 방장(Host)이거나 로컬 모드일 때 설정값을 공유하고 AI 스폰
+      const isHostOrLocal = !isMultiplayer || (window.Playroom && Playroom.isHost());
+      if (isMultiplayer && isHostOrLocal) {
+        Playroom.setState('roomAICount', state.selectedAICount, true);
+      }
+
+      const aiCount = (isMultiplayer && !isHostOrLocal && window.Playroom)
+        ? (Playroom.getState('roomAICount') ?? state.selectedAICount)
+        : state.selectedAICount;
+
+      for (let i = 0; i < aiCount; i++) {
+        const prof = AI_PROFILES[i % AI_PROFILES.length];
+        const angle = (i / Math.max(1, aiCount)) * Math.PI * 2;
+        const aiSnake = new Snake3D({
+          id: `ai-${i}`,
+          name: prof.name,
+          colorHex: prof.color,
+          cssColor: prof.css,
+          isPlayer: false,
+          isRemote: isMultiplayer && !isHostOrLocal, // 게스트에서는 AI도 원격 Lerp로 렌더링
+          startX: Math.cos(angle) * 18,
+          startZ: Math.sin(angle) * 18,
+          iq: prof.iq
+        });
+        state.aiSnakes.push(aiSnake);
+        state.snakes.push(aiSnake);
+      }
+
+      const copyBtn = document.getElementById('btn-copy-invite');
+      if (isMultiplayer) {
+        copyBtn.classList.remove('hidden');
+        const roleTxt = isHostOrLocal ? '방장(Host)' : '참가자(Guest)';
+        document.getElementById('hud-mode-badge').textContent = `🌐 멀티플레이 (${roleTxt}) · AI ${aiCount}`;
+        document.getElementById('hud-net-badge').textContent = `⚡ Δt 공정 판정 & 15Hz 보간 ON`;
+      } else {
+        copyBtn.classList.add('hidden');
+        document.getElementById('hud-mode-badge').textContent =
+          aiCount === 0 ? '🌱 솔로 연습 모드 (AI 없음)' : `💻 로컬 대결 · AI 라이벌 ${aiCount}마리`;
+        document.getElementById('hud-net-badge').textContent = `⚡ 0.55s 동시 오픈 & 0ms 입력`;
+      }
+
+      spawnEnergyPellets(22);
+
+      if (isHostOrLocal) {
+        hostGenerateAndBroadcastProblem();
+      } else if (window.Playroom) {
+        const existingProb = Playroom.getState('activeProblem');
+        if (existingProb) applyProblemToClientUI(existingProb);
+      }
+
+      updateHUDStats();
+
+      document.getElementById('lobby-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('hud').classList.remove('hidden');
+
+      state.running = true;
+    }
+
+    function triggerGameOver(reasonText) {
+      state.running = false;
+      document.getElementById('hud').classList.add('hidden');
+      document.getElementById('result-screen').classList.remove('hidden');
+
+      document.getElementById('result-reason').textContent = reasonText;
+      document.getElementById('res-score').textContent = `${state.score}점`;
+      document.getElementById('res-max-len').textContent = `${state.maxLen}`;
+
+      if (state.currentProblem) {
+        const p = state.currentProblem;
+        const correctOpt = p.options[p.correctIndex];
+        const correctLabel = QUADRANT_ZONES[p.correctIndex].label;
+        renderMathContent(document.getElementById('res-problem-q'), `문제: ${p.question}`, false);
+        renderMathContent(document.getElementById('res-problem-a'), `정답: ${correctLabel}번 ($${correctOpt}$)`, false);
+        renderMathContent(document.getElementById('res-problem-exp'), `풀이: ${p.explanation}`, false);
+      }
+    }
+
+    /**************************************************************
+     * 15. 이벤트 리스너 및 초대 링크 복사
+     **************************************************************/
+    const gradeDescMap = {
+      '1': '중1: 소인수분해, 정수와 유리수, 일차방정식, 정비례',
+      '2': '중2: 지수법칙, 연립방정식, 일차함수, 도형의 성질',
+      '3': '중3: 제곱근과 실수, 이차방정식, 피타고라스 정리, 이차함수',
+      'all': '중1 ~ 중3 전 교육과정 핵심 문제 통합 출제'
+    };
+    document.querySelectorAll('#grade-selector .select-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#grade-selector .select-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.selectedGrade = btn.dataset.grade;
+        document.getElementById('grade-desc-text').textContent = gradeDescMap[state.selectedGrade];
+      });
+    });
+
+    const aiDescMap = {
+      '0': '혼자서 연습하거나 친구들끼리만 순수하게 대결하는 모드',
+      '1': 'AI 라이벌 1마리가 함께 참여하는 입문 모드',
+      '2': 'AI 라이벌 2마리와 경쟁하는 밸런스 모드',
+      '3': 'AI 라이벌 3마리와 함께하는 표준 아레나 모드',
+      '5': 'AI 라이벌 5마리와 길이 뺏기 접전을 벌이는 난전 모드'
+    };
+    document.querySelectorAll('#ai-selector .select-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#ai-selector .select-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.selectedAICount = parseInt(btn.dataset.ai, 10);
+        document.getElementById('ai-desc-text').textContent = aiDescMap[String(state.selectedAICount)];
+      });
+    });
+
+    document.getElementById('start-multi-btn').addEventListener('click', startPlayroomMultiplayer);
+    document.getElementById('start-local-btn').addEventListener('click', () => startGameSession(false));
+
+    document.getElementById('btn-retry').addEventListener('click', () => {
+      if (state.isMultiplayer && state.player) {
+        // 멀티플레이 중에는 방을 나가지 않고 즉시 초기 길이로 부활
+        state.player.targetLength = INITIAL_SNAKE_LEN;
+        state.player.x = randInt(-15, 15);
+        state.player.z = randInt(-15, 15);
+        state.player.collisionCooldown = 2.0;
+        state.player.syncSegments();
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        state.running = true;
+      } else {
+        startGameSession(false);
+      }
+    });
+
+    document.getElementById('btn-back-lobby').addEventListener('click', () => {
+      state.running = false;
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('lobby-screen').classList.remove('hidden');
+    });
+    document.getElementById('btn-lobby').addEventListener('click', () => {
+      state.running = false;
+      document.getElementById('hud').classList.add('hidden');
+      document.getElementById('lobby-screen').classList.remove('hidden');
+    });
+
+    document.getElementById('btn-hint').addEventListener('click', () => {
+      const hb = document.getElementById('hud-hint-box');
+      hb.classList.toggle('hidden');
+    });
+
+    document.getElementById('btn-copy-invite').addEventListener('click', () => {
+      const tempInput = document.createElement('input');
+      tempInput.value = window.location.href;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('🔗 현재 멀티플레이 방 접속 링크가 복사되었습니다! 친구에게 공유하세요.');
+    });
+
+    window.addEventListener('keydown', e => {
+      state.keys[e.code] = true;
+      if (e.code === 'Space') state.boosting = true;
+    });
+    window.addEventListener('keyup', e => {
+      state.keys[e.code] = false;
+      if (e.code === 'Space') state.boosting = false;
+    });
+
+    const raycaster = new THREE.Raycaster();
+    const mouseNDC = new THREE.Vector2();
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectPt = new THREE.Vector3();
+
+    window.addEventListener('pointermove', e => {
+      if (!state.running || !state.player) return;
+      mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouseNDC, camera);
+      if (raycaster.ray.intersectPlane(groundPlane, intersectPt)) {
+        state.mouseTargetAngle = Math.atan2(intersectPt.z - state.player.z, intersectPt.x - state.player.x);
+      }
+    });
+
+    window.addEventListener('pointerdown', e => {
+      if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.liquid-glass')) return;
+      state.boosting = true;
+    });
+    window.addEventListener('pointerup', () => {
+      state.boosting = false;
+    });
+
+    const boostBtn = document.getElementById('btn-boost');
+    boostBtn.addEventListener('pointerdown', () => { state.boosting = true; });
+    boostBtn.addEventListener('pointerup', () => { state.boosting = false; });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /**************************************************************
+     * 16. 메인 애니메이션 루프
+     **************************************************************/
+    let lastTime = performance.now();
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      if (state.running && state.player) {
+        syncMultiplayerTick(now);
+        state.snakes.forEach(s => s.update(dt));
+        checkSnakeCollisions();
+        if (state.running) {
+          checkOrbPickups(dt);
+        }
+
+        const targetCamX = state.player.x * 0.65;
+        const targetCamZ = state.player.z * 0.65 + 48;
+        camera.position.x += (targetCamX - camera.position.x) * 0.08;
+        camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+        camera.position.y = 58;
+        camera.lookAt(state.player.x * 0.5, 0, state.player.z * 0.5);
+
+        updateOverlaysAndRadar();
+      } else {
+        const t = now * 0.00025;
+        camera.position.set(Math.cos(t) * 52, 56, Math.sin(t) * 52);
+        camera.lookAt(0, 0, 0);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
