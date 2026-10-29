@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#070b19" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>PolySlither Math 3D - Playroom Multiplayer & Fair Sync Edition</title>
   
   <!-- Pretendard Font -->
@@ -34,6 +38,14 @@
       --opt-1: #00e5ff; /* 북동 (B) */
       --opt-2: #ffbe0b; /* 남서 (C) */
       --opt-3: #a855f7; /* 남동 (D) */
+
+      /* 모바일 안전 영역 & 동적 뷰포트 */
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+      --hud-top-h: 160px;
+      --app-h: 100vh;
     }
 
     * {
@@ -46,12 +58,17 @@
 
     body, html {
       width: 100%;
-      height: 100%;
+      height: var(--app-h);
       overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #070b19;
       color: #ffffff;
     }
+
+    button { touch-action: manipulation; }
 
     .katex {
       font-size: 1.06em !important;
@@ -86,6 +103,7 @@
       position: fixed;
       inset: 0;
       z-index: 2;
+      touch-action: none;
     }
 
     /* Liquid Glass Card Base */
@@ -104,12 +122,15 @@
     .screen {
       position: fixed;
       inset: 0;
+      height: var(--app-h);
       z-index: 10;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(16px + var(--sab)) calc(16px + var(--sal));
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       transition: opacity 0.35s ease, visibility 0.35s ease;
     }
     .screen.hidden {
@@ -178,6 +199,8 @@
       font-size: 0.9rem;
       font-weight: 700;
       outline: none;
+      user-select: text;
+      -webkit-user-select: text;
     }
     .glass-input:focus {
       border-color: var(--accent-cyan);
@@ -197,6 +220,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .setting-label span.sub {
@@ -321,7 +346,7 @@
     /* Top Problem Bar */
     .hud-top-center {
       position: absolute;
-      top: 12px;
+      top: calc(12px + var(--sat));
       left: 50%;
       transform: translateX(-50%);
       width: min(92vw, 730px);
@@ -386,6 +411,9 @@
     .glass-action-btn:hover {
       background: rgba(255, 255, 255, 0.22);
     }
+    .glass-action-btn.hidden {
+      display: none;
+    }
 
     .problem-body-wrap {
       position: relative;
@@ -431,6 +459,8 @@
       font-weight: 800;
       color: #7ef9ff;
       z-index: 3;
+      text-align: center;
+      padding: 0 8px;
       transition: opacity 0.18s ease;
     }
     .fair-sync-overlay.hidden {
@@ -489,6 +519,7 @@
       font-size: 0.72rem;
       font-weight: 900;
       color: #081020;
+      flex-shrink: 0;
     }
     .opt-0 .chip-badge { background: var(--opt-0); color: #fff; }
     .opt-1 .chip-badge { background: var(--opt-1); }
@@ -517,8 +548,8 @@
     /* Left HUD: Player Stats & Network Mode */
     .hud-top-left {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: calc(12px + var(--sat));
+      left: calc(12px + var(--sal));
       width: 225px;
       padding: 13px 15px;
       pointer-events: auto;
@@ -550,8 +581,8 @@
     /* Right HUD: Radar Minimap & Leaderboard */
     .hud-top-right {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: calc(12px + var(--sat));
+      right: calc(12px + var(--sar));
       width: 220px;
       display: flex;
       flex-direction: column;
@@ -595,7 +626,10 @@
       margin-bottom: 7px;
       display: flex;
       justify-content: space-between;
+      cursor: pointer;
     }
+    .leaderboard-card.collapsed .lb-list { display: none; }
+    .leaderboard-card.collapsed .lb-title { margin-bottom: 0; }
 
     .lb-list {
       display: flex;
@@ -695,7 +729,7 @@
     /* Toast Feedback */
     #toast-container {
       position: fixed;
-      bottom: 86px;
+      bottom: calc(86px + var(--sab));
       left: 50%;
       transform: translateX(-50%);
       z-index: 8;
@@ -714,6 +748,7 @@
       backdrop-filter: blur(16px);
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
       animation: popToast 0.25s ease-out;
+      text-align: center;
     }
 
     @keyframes popToast {
@@ -724,7 +759,7 @@
     /* Bottom Controls Bar */
     .hud-bottom-bar {
       position: absolute;
-      bottom: 14px;
+      bottom: calc(14px + var(--sab));
       left: 50%;
       transform: translateX(-50%);
       padding: 8px 18px;
@@ -753,6 +788,7 @@
       max-width: 520px;
       padding: 30px;
       text-align: center;
+      margin: auto;
     }
 
     .review-box {
@@ -764,6 +800,7 @@
       text-align: left;
       font-size: 0.85rem;
       line-height: 1.6;
+      overflow-x: auto;
     }
 
     .btn-row {
@@ -783,22 +820,238 @@
       cursor: pointer;
     }
 
-    @media (max-width: 900px) {
+    /* ================= 모바일 터치 컨트롤 ================= */
+    #touch-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      display: none;
+      touch-action: none;
+    }
+    body.is-touch.in-game #touch-layer { display: block; }
+
+    .joy-base {
+      position: fixed;
+      width: 120px;
+      height: 120px;
+      margin: -60px 0 0 -60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 7;
+      pointer-events: none;
+      display: none;
+    }
+    .joy-base.active { display: block; }
+    .joy-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      margin: -26px 0 0 -26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #bdfcff, #00f2fe 60%, #0284c7);
+      box-shadow: 0 0 18px rgba(0, 242, 254, 0.6);
+    }
+
+    .joy-hint {
+      position: fixed;
+      left: calc(18px + var(--sal));
+      bottom: calc(28px + var(--sab));
+      padding: 8px 14px;
+      border-radius: 999px;
+      z-index: 7;
+      pointer-events: none;
+      background: rgba(12, 18, 38, 0.75);
+      border: 1px dashed rgba(126, 249, 255, 0.6);
+      color: #7ef9ff;
+      font-size: 0.74rem;
+      font-weight: 700;
+      display: none;
+    }
+    body.is-touch.in-game .joy-hint.show { display: block; }
+
+    #m-boost-btn {
+      position: fixed;
+      right: calc(18px + var(--sar));
+      bottom: calc(22px + var(--sab));
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      z-index: 7;
+      display: none;
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      background: linear-gradient(135deg, #ff4b72, #ffbe0b);
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.72rem;
+      touch-action: none;
+      box-shadow: 0 8px 24px rgba(255, 75, 114, 0.45);
+      transition: transform 0.08s;
+    }
+    body.is-touch.in-game #m-boost-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    #m-boost-btn.pressed { transform: scale(0.9); filter: brightness(1.25); }
+
+    body.is-touch .hud-bottom-bar { display: none; }
+    body.is-touch .hud-top-left,
+    body.is-touch .radar-card { pointer-events: none; }
+
+    /* ================= 반응형 레이아웃 ================= */
+
+    /* 중간 폭: 좌/우 패널을 상단 문제 카드 아래로 배치 (겹침 방지) */
+    @media (max-width: 1220px) {
       .hud-top-left, .hud-top-right {
-        top: auto;
-        bottom: 62px;
-        width: 168px;
+        top: calc(var(--hud-top-h) + 8px);
       }
-      .options-legend-bar {
-        grid-template-columns: repeat(2, 1fr);
+      .hud-top-left { width: 190px; padding: 10px 12px; }
+      .hud-top-right { width: 180px; }
+      #radar-canvas { width: 140px; height: 140px; }
+    }
+
+    @media (max-width: 900px) {
+      .start-btn-group { grid-template-columns: 1fr; }
+    }
+
+    /* 세로 모드 (폰/소형 태블릿) */
+    @media (max-width: 820px) and (orientation: portrait) {
+      .hud-top-center {
+        top: calc(6px + var(--sat));
+        width: min(calc(100vw - 12px - var(--sal) - var(--sar)), 730px);
+        padding: 9px 10px;
+        gap: 6px;
+        border-radius: 18px;
       }
-      .start-btn-group {
-        grid-template-columns: 1fr;
+      .problem-header { gap: 6px; }
+      .topic-pill, .sync-pill { font-size: 0.66rem; padding: 3px 8px; }
+      .glass-action-btn { font-size: 0.68rem; padding: 4px 9px; }
+      .problem-body-wrap { min-height: 38px; padding: 2px 4px; }
+      .problem-body { font-size: 0.95rem; line-height: 1.35; }
+      .fair-sync-overlay { font-size: 0.72rem; }
+      .options-legend-bar { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+      .option-chip { padding: 5px 6px; font-size: 0.8rem; justify-content: center; }
+      .chip-dir { display: none; }
+      .chip-badge { width: 18px; height: 18px; font-size: 0.66rem; }
+      .hint-drawer { font-size: 0.76rem; padding: 6px 9px; }
+
+      .hud-top-left {
+        top: calc(var(--hud-top-h) + 6px);
+        left: calc(6px + var(--sal));
+        width: 132px;
+        padding: 7px 10px;
+        border-radius: 14px;
       }
-      #radar-canvas {
-        width: 126px;
-        height: 126px;
+      .stat-row { font-size: 0.68rem; margin-bottom: 2px; }
+      .stat-val { font-size: 0.8rem; }
+      .min-len-bar-wrap { display: none; }
+
+      .hud-top-right {
+        top: calc(var(--hud-top-h) + 6px);
+        right: calc(6px + var(--sar));
+        width: 116px;
+        gap: 6px;
       }
+      .radar-card { padding: 6px; border-radius: 14px; gap: 4px; }
+      .radar-title { font-size: 0.6rem; }
+      .radar-title span:last-child { display: none; }
+      #radar-canvas { width: 104px; height: 104px; border-radius: 10px; }
+      .leaderboard-card { padding: 6px 8px; border-radius: 14px; }
+      .lb-title { font-size: 0.62rem; margin-bottom: 4px; }
+      .lb-list { max-height: none; gap: 3px; }
+      .lb-item { font-size: 0.64rem; padding: 3px 5px; }
+      .lb-item:nth-child(n+4) { display: none; }
+      .lb-item.me { display: flex; }
+
+      #toast-container { bottom: calc(130px + var(--sab)); width: 92vw; }
+      .toast-msg { font-size: 0.76rem; padding: 7px 14px; }
+      .orb-floating-label { font-size: 0.76rem; padding: 3px 8px; border-width: 1.5px; }
+      .orb-edge-indicator { font-size: 0.7rem; padding: 3px 7px; }
+      .snake-floating-tag { font-size: 0.6rem; padding: 2px 6px; }
+    }
+
+    /* 가로 모드 (폰) */
+    @media (max-height: 520px) and (orientation: landscape) {
+      .hud-top-center {
+        top: calc(6px + var(--sat));
+        width: min(54vw, 560px);
+        padding: 7px 10px;
+        gap: 5px;
+        border-radius: 16px;
+      }
+      .problem-body-wrap { min-height: 32px; }
+      .problem-body { font-size: 0.88rem; }
+      .options-legend-bar { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+      .option-chip { padding: 4px 6px; font-size: 0.76rem; justify-content: center; }
+      .chip-dir { display: none; }
+      .topic-pill, .sync-pill { font-size: 0.62rem; padding: 2px 7px; }
+      .glass-action-btn { font-size: 0.64rem; padding: 3px 8px; }
+      .fair-sync-overlay { font-size: 0.7rem; }
+      .hint-drawer { font-size: 0.72rem; padding: 4px 8px; }
+
+      .hud-top-left {
+        top: calc(6px + var(--sat));
+        left: calc(6px + var(--sal));
+        width: 140px;
+        padding: 7px 10px;
+        border-radius: 14px;
+      }
+      .stat-row { font-size: 0.66rem; margin-bottom: 2px; }
+      .stat-val { font-size: 0.78rem; }
+      .min-len-bar-wrap { display: none; }
+
+      .hud-top-right {
+        top: calc(6px + var(--sat));
+        right: calc(6px + var(--sar));
+        width: 118px;
+        gap: 6px;
+      }
+      .radar-card { padding: 6px; border-radius: 14px; }
+      .radar-title { display: none; }
+      #radar-canvas { width: 92px; height: 92px; }
+      .leaderboard-card { padding: 5px 8px; border-radius: 14px; }
+      .lb-title { font-size: 0.6rem; margin-bottom: 3px; }
+      .lb-list { max-height: none; }
+      .lb-item { font-size: 0.62rem; padding: 2px 5px; }
+      .lb-item:nth-child(n+4) { display: none; }
+      .lb-item.me { display: flex; }
+
+      #m-boost-btn { width: 72px; height: 72px; }
+      #toast-container { bottom: calc(16px + var(--sab)); }
+      .toast-msg { font-size: 0.74rem; padding: 6px 14px; }
+      .orb-floating-label { font-size: 0.74rem; padding: 3px 8px; }
+      .orb-edge-indicator { font-size: 0.68rem; padding: 3px 7px; }
+      .snake-floating-tag { font-size: 0.6rem; }
+
+      .lobby-card { padding: 14px 18px; }
+      .game-title { font-size: 1.5rem; }
+      .game-subtitle { margin-bottom: 10px; }
+      .fairness-box { max-height: 70px; overflow-y: auto; }
+    }
+
+    /* 로비/결과 화면 (작은 폭) */
+    @media (max-width: 600px) {
+      .lobby-card { padding: 20px 16px; border-radius: 20px; }
+      .game-title { font-size: 1.7rem; }
+      .game-subtitle { font-size: 0.8rem; margin-bottom: 14px; }
+      .badge-title { font-size: 0.64rem; padding: 4px 10px; }
+      .glass-input { font-size: 16px; padding: 12px 14px; } /* iOS 자동 확대 방지 */
+      .option-grid { grid-template-columns: repeat(2, 1fr); }
+      .option-grid.ai-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+      .option-grid.ai-grid .sub-txt { display: none; }
+      .select-btn { padding: 10px 4px; min-height: 48px; }
+      .fairness-box { font-size: 0.7rem; max-height: 120px; overflow-y: auto; }
+      .start-btn { padding: 15px 14px; font-size: 0.9rem; min-height: 52px; }
+      .result-card { padding: 22px 18px; }
+      .btn-row { grid-template-columns: 1fr; }
+      .secondary-btn { min-height: 48px; }
     }
   </style>
 </head>
@@ -813,6 +1066,12 @@
 
   <!-- 3D Arena Canvas -->
   <div id="canvas-container"></div>
+
+  <!-- 모바일 터치 입력 레이어 (가상 조이스틱) -->
+  <div id="touch-layer"></div>
+  <div class="joy-base" id="joy-base"><div class="joy-knob" id="joy-knob"></div></div>
+  <div class="joy-hint" id="joy-hint">👆 화면 아무 곳이나 드래그해서 조향</div>
+  <button id="m-boost-btn" type="button"><span style="font-size:1.6rem;line-height:1">⚡</span><span>BOOST</span></button>
 
   <!-- 3D Floating & Off-Screen Edge Labels -->
   <div id="overlay-3d-labels"></div>
@@ -1002,7 +1261,7 @@
       </div>
 
       <div class="leaderboard-card liquid-glass">
-        <div class="lb-title">
+        <div class="lb-title" id="lb-title">
           <span>🏆 실시간 아레나 랭킹</span>
           <span>길이(L)</span>
         </div>
@@ -1010,7 +1269,7 @@
       </div>
     </div>
 
-    <!-- Bottom Controls -->
+    <!-- Bottom Controls (데스크톱 전용, 터치 기기에서는 숨김) -->
     <div class="hud-bottom-bar liquid-glass">
       <span>🖱️ <strong>마우스 커서</strong> 또는 <strong>방향키(WASD)</strong> 조향</span>
       <button class="boost-btn" id="btn-boost">⚡ 부스트 (Space / 클릭)</button>
@@ -1375,6 +1634,11 @@
     const NET_SYNC_INTERVAL_MS = 66;  // 공식 2: 15Hz(66ms) 네트워크 브로드캐스트 주기
     const ARBITRATION_WINDOW_MS = 95; // 공식 3: 동시 구슬 접촉 시 Δt(풀이 시간) 비교 버퍼 윈도우 (95ms)
 
+    // [모바일 최적화] 터치 기기 판별 & 화면비 기반 카메라/HUD 여백 설정
+    const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+    const CAM_CFG = { height: 58, back: 48 };           // 세로 화면일수록 카메라를 멀리 배치
+    const HUD_INSET = { top: 160, bottom: 70 };          // 구슬 라벨/가장자리 화살표가 HUD에 가리지 않도록 하는 여백
+
     const QUADRANT_ZONES = [
       { label: 'A', dirText: '↖ 북서', colorHex: 0xff4b72, cssColor: '#ff4b72', baseX: -27, baseZ: -27 },
       { label: 'B', dirText: '↗ 북동', colorHex: 0x00e5ff, cssColor: '#00e5ff', baseX:  27, baseZ: -27 },
@@ -1429,10 +1693,10 @@
     camera.position.set(0, 62, 52);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH || window.devicePixelRatio < 2, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.5 : 2));
+    renderer.shadowMap.enabled = !IS_TOUCH; // 모바일은 그림자 연산 생략 (성능)
     container.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.75);
@@ -1440,7 +1704,7 @@
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
     dirLight.position.set(35, 80, 45);
-    dirLight.castShadow = true;
+    dirLight.castShadow = !IS_TOUCH;
     scene.add(dirLight);
 
     const gridHelper = new THREE.GridHelper(ARENA_HALF * 2, 32, 0x00f2fe, 0x1e293b);
@@ -1905,6 +2169,8 @@
       div.style.border = `1px solid ${borderColor}`;
       div.textContent = text;
       wrap.appendChild(div);
+      // 모바일에서는 토스트가 쌓여 화면을 가리지 않도록 최대 2개만 유지
+      while (IS_TOUCH && wrap.children.length > 2) wrap.removeChild(wrap.firstChild);
       setTimeout(() => {
         if (div.parentNode) div.parentNode.removeChild(div);
       }, 2400);
@@ -2037,6 +2303,7 @@
             ? ` (간발의 차 Δt ${outcome.diffMs}ms 앞섬!)`
             : '';
           showToast(`⭕ 공정 판정 정답! (${zoneLabel} · 풀이 ${secStr}초)${vsMsg} 길이 +2`, 'rgba(0, 242, 254, 0.32)', '#00f2fe');
+          if (IS_TOUCH && navigator.vibrate) navigator.vibrate([20, 40, 20]);
         } else {
           showToast(`⚡ ${outcome.winnerName} 정답 선취! (${zoneLabel} · 풀이 ${secStr}초)`, 'rgba(196, 113, 237, 0.32)', '#c471ed');
         }
@@ -2056,6 +2323,7 @@
           if (targetSnake.isPlayer) {
             state.streak = 0;
             showToast(`❌ 오답 구슬(${zoneLabel})! 길이가 -2 감소합니다.`, 'rgba(246, 79, 89, 0.35)', '#f64f59');
+            if (IS_TOUCH && navigator.vibrate) navigator.vibrate(80);
             if (targetSnake.targetLength < MIN_SNAKE_LEN) {
               triggerGameOver(`오답 구슬 충돌로 최소 길이(${MIN_SNAKE_LEN}) 미만으로 줄어들었습니다.`);
               return;
@@ -2129,6 +2397,7 @@
             'rgba(246, 79, 89, 0.32)',
             '#f64f59'
           );
+          if (IS_TOUCH && navigator.vibrate) navigator.vibrate(60);
         }
 
         if (attacker.targetLength < MIN_SNAKE_LEN) {
@@ -2231,6 +2500,7 @@
      **************************************************************/
     const radarCanvas = document.getElementById('radar-canvas');
     const radarCtx = radarCanvas.getContext('2d');
+    const projVec = new THREE.Vector3(); // 매 프레임 객체 생성 방지 (모바일 GC 부담 감소)
 
     function updateOverlaysAndRadar() {
       const w = window.innerWidth;
@@ -2249,11 +2519,10 @@
 
       state.snakes.forEach(s => {
         if (!s.tagEl) return;
-        const pos = new THREE.Vector3(s.x, 3.2, s.z);
-        pos.project(camera);
-        if (pos.z < 1) {
-          const sx = (pos.x * halfW) + halfW;
-          const sy = -(pos.y * halfH) + halfH;
+        projVec.set(s.x, 3.2, s.z).project(camera);
+        if (projVec.z < 1) {
+          const sx = (projVec.x * halfW) + halfW;
+          const sy = -(projVec.y * halfH) + halfH;
           s.tagEl.style.display = 'block';
           s.tagEl.style.left = `${sx}px`;
           s.tagEl.style.top = `${sy}px`;
@@ -2262,14 +2531,17 @@
         }
       });
 
-      state.answerOrbs.forEach(orb => {
-        const pos = new THREE.Vector3(orb.x, 4.5, orb.z);
-        pos.project(camera);
-        const sx = (pos.x * halfW) + halfW;
-        const sy = -(pos.y * halfH) + halfH;
+      // [모바일 최적화] 상단 문제 카드/하단 부스트 버튼 영역을 피해서 구슬 라벨 배치
+      const margin = w < 600 ? 34 : 56;
+      const topLimit = (w <= 820 || h <= 520) ? Math.max(margin, HUD_INSET.top + 10) : margin;
+      const bottomLimit = Math.max(margin, HUD_INSET.bottom);
 
-        const margin = 56;
-        const isInsideScreen = (pos.z < 1 && sx > margin && sx < w - margin && sy > margin && sy < h - margin);
+      state.answerOrbs.forEach(orb => {
+        projVec.set(orb.x, 4.5, orb.z).project(camera);
+        const sx = (projVec.x * halfW) + halfW;
+        const sy = -(projVec.y * halfH) + halfH;
+
+        const isInsideScreen = (projVec.z < 1 && sx > margin && sx < w - margin && sy > topLimit && sy < h - bottomLimit);
 
         if (isInsideScreen) {
           orb.floatingEl.style.display = 'flex';
@@ -2285,8 +2557,10 @@
           const angle = Math.atan2(orb.z - pz, orb.x - px);
           const dist = Math.round(Math.hypot(orb.x - px, orb.z - pz));
 
+          const minY = HUD_INSET.top + 24;
+          const maxY = h - bottomLimit;
           const clampedX = Math.max(margin, Math.min(w - margin, halfW + Math.cos(angle) * (halfW - margin)));
-          const clampedY = Math.max(margin + 60, Math.min(h - margin - 40, halfH + Math.sin(angle) * (halfH - margin - 60)));
+          const clampedY = Math.max(minY, Math.min(maxY, halfH + Math.sin(angle) * halfH));
 
           const deg = Math.round((angle * 180) / Math.PI);
           orb.edgeEl.style.left = `${clampedX}px`;
@@ -2676,13 +2950,27 @@
       hb.classList.toggle('hidden');
     });
 
-    document.getElementById('btn-copy-invite').addEventListener('click', () => {
-      const tempInput = document.createElement('input');
-      tempInput.value = window.location.href;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
+    // 초대 링크: 모바일은 네이티브 공유 시트, 그 외는 Clipboard API (+ 구형 브라우저 폴백)
+    document.getElementById('btn-copy-invite').addEventListener('click', async () => {
+      const url = window.location.href;
+      if (navigator.share && IS_TOUCH) {
+        try {
+          await navigator.share({ title: 'PolySlither Math 3D', text: '수학 지렁이 대결 방에 들어와!', url });
+          return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch (_) {
+        const tempInput = document.createElement('input');
+        tempInput.value = url;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
       showToast('🔗 현재 멀티플레이 방 접속 링크가 복사되었습니다! 친구에게 공유하세요.');
     });
 
@@ -2700,7 +2988,9 @@
     const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const intersectPt = new THREE.Vector3();
 
+    // 마우스/펜 전용 조향 (터치는 아래 가상 조이스틱이 처리)
     window.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch') return;
       if (!state.running || !state.player) return;
       mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -2711,22 +3001,190 @@
     });
 
     window.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch') return;
       if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.liquid-glass')) return;
       state.boosting = true;
     });
-    window.addEventListener('pointerup', () => {
+    window.addEventListener('pointerup', e => {
+      if (e.pointerType === 'touch') return; // 조이스틱 손가락을 떼도 부스트 버튼 상태 유지
       state.boosting = false;
     });
 
     const boostBtn = document.getElementById('btn-boost');
     boostBtn.addEventListener('pointerdown', () => { state.boosting = true; });
-    boostBtn.addEventListener('pointerup', () => { state.boosting = false; });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+      boostBtn.addEventListener(ev, () => { state.boosting = false; })
+    );
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+    /**************************************************************
+     * 15-2. 모바일 최적화: 가상 조이스틱 / 부스트 버튼 / 뷰포트 / 전체화면
+     **************************************************************/
+    const rootEl = document.documentElement;
+    const hudEl = document.getElementById('hud');
+    const topCardEl = document.querySelector('.hud-top-center');
+    const touchLayer = document.getElementById('touch-layer');
+    const joyBase = document.getElementById('joy-base');
+    const joyKnob = document.getElementById('joy-knob');
+    const joyHint = document.getElementById('joy-hint');
+    const mBoostBtn = document.getElementById('m-boost-btn');
+
+    if (IS_TOUCH) document.body.classList.add('is-touch');
+
+    // (1) 상단 문제 카드 높이 측정 → 좌/우 패널 위치 및 구슬 라벨 여백 기준
+    function updateHudInsets() {
+      const r = topCardEl.getBoundingClientRect();
+      if (r.height > 0) {
+        rootEl.style.setProperty('--hud-top-h', Math.round(r.bottom) + 'px');
+        HUD_INSET.top = r.bottom;
+      }
+      HUD_INSET.bottom = IS_TOUCH ? 125 : 70;
+    }
+    if (window.ResizeObserver) new ResizeObserver(updateHudInsets).observe(topCardEl);
+
+    // (2) 동적 뷰포트(주소창 대응) + 화면비별 카메라 거리/FOV + 해상도
+    function updateViewport() {
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      rootEl.style.setProperty('--app-h', vh + 'px');
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const aspect = w / h;
+      const s = aspect >= 1.3 ? 1 : Math.min(1.6, Math.sqrt(1.3 / aspect));
+      CAM_CFG.height = 58 * s;
+      CAM_CFG.back = 48 * s;
+
+      camera.fov = aspect < 1 ? 50 : 46;
+      camera.aspect = aspect;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.5 : 2));
+      renderer.setSize(w, h);
+
+      // 레이더 내부 해상도: 작게 표시될 때 점/글자 비율 유지
+      const radarSize = (w <= 820 || h <= 520) ? 132 : 172;
+      if (radarCanvas.width !== radarSize) {
+        radarCanvas.width = radarSize;
+        radarCanvas.height = radarSize;
+      }
+      updateHudInsets();
+    }
+
+    // (3) 인게임 상태 클래스 (HUD 표시 여부 감지)
+    let joyHintTimer = null;
+    function syncInGameClass() {
+      const inGame = !hudEl.classList.contains('hidden');
+      document.body.classList.toggle('in-game', inGame);
+      if (inGame) {
+        requestAnimationFrame(updateHudInsets);
+        joyHint.classList.add('show');
+        clearTimeout(joyHintTimer);
+        joyHintTimer = setTimeout(() => joyHint.classList.remove('show'), 5000);
+      } else {
+        resetTouchInputs();
+      }
+    }
+    new MutationObserver(syncInGameClass).observe(hudEl, { attributes: true, attributeFilter: ['class'] });
+
+    // (4) 플로팅 가상 조이스틱 — 터치한 지점이 중심, 드래그 방향 = 이동 방향
+    const JOY_RADIUS = 50;
+    let joyPointerId = null;
+    let joyOriginX = 0;
+    let joyOriginY = 0;
+
+    touchLayer.addEventListener('pointerdown', e => {
+      if (!state.running || joyPointerId !== null) return;
+      e.preventDefault();
+      joyPointerId = e.pointerId;
+      joyOriginX = e.clientX;
+      joyOriginY = e.clientY;
+      try { touchLayer.setPointerCapture(e.pointerId); } catch (_) {}
+      joyBase.style.left = joyOriginX + 'px';
+      joyBase.style.top = joyOriginY + 'px';
+      joyKnob.style.transform = 'translate(0px, 0px)';
+      joyBase.classList.add('active');
+      joyHint.classList.remove('show');
     });
+
+    touchLayer.addEventListener('pointermove', e => {
+      if (e.pointerId !== joyPointerId || !state.running) return;
+      let dx = e.clientX - joyOriginX;
+      let dy = e.clientY - joyOriginY;
+      const d = Math.hypot(dx, dy);
+      if (d > JOY_RADIUS) {
+        dx = (dx / d) * JOY_RADIUS;
+        dy = (dy / d) * JOY_RADIUS;
+      }
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      // 쿼터뷰 카메라는 Y축 회전이 없으므로 화면 오른쪽 = 월드 +x, 화면 아래 = 월드 +z
+      if (d > 8) state.mouseTargetAngle = Math.atan2(dy, dx);
+    });
+
+    function endJoystick(e) {
+      if (e.pointerId !== joyPointerId) return;
+      joyPointerId = null;
+      joyBase.classList.remove('active');
+    }
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => touchLayer.addEventListener(ev, endJoystick));
+
+    // (5) 모바일 부스트 버튼 — 멀티터치로 조이스틱과 동시 사용 가능
+    mBoostBtn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { mBoostBtn.setPointerCapture(e.pointerId); } catch (_) {}
+      state.boosting = true;
+      mBoostBtn.classList.add('pressed');
+      if (navigator.vibrate) navigator.vibrate(12);
+    });
+    function endMobileBoost() {
+      state.boosting = false;
+      mBoostBtn.classList.remove('pressed');
+    }
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => mBoostBtn.addEventListener(ev, endMobileBoost));
+
+    function resetTouchInputs() {
+      joyPointerId = null;
+      joyBase.classList.remove('active');
+      endMobileBoost();
+      state.keys = {};
+    }
+    window.addEventListener('blur', resetTouchInputs);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) resetTouchInputs(); });
+
+    // (6) 랭킹 카드 접기/펼치기
+    document.getElementById('lb-title').addEventListener('click', () => {
+      document.querySelector('.leaderboard-card').classList.toggle('collapsed');
+    });
+
+    // (7) 좁은 화면용 짧은 버튼 문구
+    if (IS_TOUCH || window.innerWidth < 600) {
+      document.getElementById('btn-copy-invite').textContent = '🔗 초대';
+      document.getElementById('start-multi-btn').textContent = '🌐 실시간 멀티플레이';
+      document.getElementById('start-local-btn').textContent = '💻 싱글 / 연습 모드';
+    }
+
+    // (8) 게임 시작 시 전체화면 시도 (Android 등 지원 브라우저만, iOS Safari는 무시됨)
+    function tryFullscreen() {
+      if (!IS_TOUCH || document.fullscreenElement || document.webkitFullscreenElement) return;
+      const req = rootEl.requestFullscreen || rootEl.webkitRequestFullscreen;
+      if (!req) return;
+      try {
+        const p = req.call(rootEl, { navigationUI: 'hide' });
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (_) {}
+    }
+    ['start-multi-btn', 'start-local-btn', 'btn-retry'].forEach(id =>
+      document.getElementById(id).addEventListener('click', tryFullscreen)
+    );
+
+    // (9) 브라우저 기본 제스처 차단 (핀치 줌, 길게 누르기 메뉴)
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('contextmenu', e => {
+      if (document.body.classList.contains('in-game')) e.preventDefault();
+    });
+
+    // (10) 리사이즈 / 회전 대응
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', () => setTimeout(updateViewport, 250));
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', updateViewport);
+    updateViewport();
 
     /**************************************************************
      * 16. 메인 애니메이션 루프
@@ -2746,11 +3204,12 @@
           checkOrbPickups(dt);
         }
 
+        // 화면비에 따라 카메라 높이/거리 자동 조정 (세로 모바일에서 4방위 구슬이 더 잘 보이도록)
         const targetCamX = state.player.x * 0.65;
-        const targetCamZ = state.player.z * 0.65 + 48;
+        const targetCamZ = state.player.z * 0.65 + CAM_CFG.back;
         camera.position.x += (targetCamX - camera.position.x) * 0.08;
         camera.position.z += (targetCamZ - camera.position.z) * 0.08;
-        camera.position.y = 58;
+        camera.position.y += (CAM_CFG.height - camera.position.y) * 0.1;
         camera.lookAt(state.player.x * 0.5, 0, state.player.z * 0.5);
 
         updateOverlaysAndRadar();
